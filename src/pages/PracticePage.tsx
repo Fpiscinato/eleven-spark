@@ -359,13 +359,17 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
 
   // After answering, the feedback and the two help buttons appear below the
   // question: they are scrolled into view so the child never has to hunt for
-  // them behind the action bar.
+  // them behind the action bar. The help panel is long, so it is aligned to
+  // the top of the reading area to be read from the beginning.
   useEffect(() => {
     if (!isConfirmed) return
     const target = helpView !== 'none' ? helpRef.current : feedbackRef.current
     if (!target) return
     const id = window.setTimeout(() => {
-      target.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: helpView !== 'none' ? 'start' : 'center',
+      })
     }, 60)
     return () => window.clearTimeout(id)
   }, [isConfirmed, index, helpView])
@@ -387,8 +391,8 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
   const progressPercent = ((index + 1) / run.questions.length) * 100
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-center overflow-y-auto bg-gradient-to-br from-slate-100 to-indigo-50 px-3 py-3 md:overflow-hidden md:px-6 md:py-4">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-2 md:h-full md:min-h-0 md:overflow-hidden">
+    <div className="focus-layer fixed inset-0 z-50 flex justify-center bg-gradient-to-br from-slate-100 to-indigo-50 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-6 md:py-4">
+      <div className="mx-auto flex h-full w-full max-w-4xl flex-col gap-2">
       <header className="flex shrink-0 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-2.5 py-1.5 shadow-sm">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
@@ -402,16 +406,16 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
           </span>
         </div>
         <span
-          className={`hidden max-w-[11rem] truncate rounded-full px-2.5 py-0.5 text-xs font-extrabold sm:inline-block ${subjectMeta.badgeClass}`}
+          className={`hidden max-w-[11rem] truncate rounded-full px-2.5 py-0.5 text-xs font-extrabold lg:inline-block ${subjectMeta.badgeClass}`}
           title={subjectMeta.label}
         >
           {subjectMeta.label}
         </span>
         <span
-          className="hidden max-w-[10rem] truncate rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-bold text-slate-600 sm:inline-block"
-          title={question.topic}
+          className="max-w-[8rem] truncate rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-bold text-slate-600 sm:max-w-[10rem] sm:text-xs"
+          title={humanizeTopic(question.topic)}
         >
-          {question.topic}
+          {humanizeTopic(question.topic)}
         </span>
         <button
           type="button"
@@ -439,7 +443,7 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
       </header>
 
       <div className="relative flex min-h-0 flex-1 flex-col">
-        <div className="flex flex-col gap-3 pb-24 md:pb-2 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:pr-1">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain pr-1">
           <QuestionView
             key={question.id}
             question={question}
@@ -492,14 +496,14 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
         </div>
       </div>
 
-      <footer className="sticky bottom-[env(safe-area-inset-bottom)] z-20 -mx-3 shrink-0 border-t-2 border-slate-200 bg-white px-3 py-2.5 md:static md:mx-0 md:rounded-2xl md:border-2 md:border-slate-200 md:shadow-sm">
+      <footer className="shrink-0 rounded-2xl border-2 border-slate-200 bg-white px-3 py-2.5 shadow-sm">
         {isConfirmed ? (
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setHelpView((view) => (view === 'quick' ? 'none' : 'quick'))}
               aria-pressed={helpView === 'quick'}
-              className={`inline-flex min-h-[36px] shrink-0 items-center justify-center gap-1 rounded-xl border-2 px-2 py-1 text-[11px] font-extrabold transition ${
+              className={`inline-flex min-h-[40px] shrink-0 items-center justify-center gap-1 rounded-xl border-2 px-2 py-1 text-[11px] font-extrabold transition ${
                 helpView === 'quick'
                   ? 'border-amber-500 bg-amber-500 text-slate-950'
                   : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
@@ -512,7 +516,7 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
               type="button"
               onClick={() => setHelpView((view) => (view === 'tutorial' ? 'none' : 'tutorial'))}
               aria-pressed={helpView === 'tutorial'}
-              className={`inline-flex min-h-[36px] shrink-0 items-center justify-center gap-1 rounded-xl border-2 px-2 py-1 text-[11px] font-extrabold transition ${
+              className={`inline-flex min-h-[40px] shrink-0 items-center justify-center gap-1 rounded-xl border-2 px-2 py-1 text-[11px] font-extrabold transition ${
                 helpView === 'tutorial'
                   ? 'border-indigo-600 bg-indigo-600 text-white'
                   : 'border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
@@ -524,7 +528,7 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
             <button
               type="button"
               onClick={goNext}
-              className={`${btnPrimaryClass} min-h-[36px] flex-1 py-1.5 text-sm`}
+              className={`${btnPrimaryClass} !min-h-[40px] flex-1 !py-1.5 text-sm`}
             >
               {isLast ? 'Results' : 'Next'}
             </button>

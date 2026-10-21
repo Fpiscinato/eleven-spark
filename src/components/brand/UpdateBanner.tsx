@@ -1,7 +1,6 @@
 import { CloudOff, RefreshCw, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { registerSW } from 'virtual:pwa-register'
-import { APP_VERSION, QUESTION_BANK_VERSION } from '../../config/version'
 
 /**
  * Tells the child (and the parent) when a new version of the app has been
@@ -35,15 +34,14 @@ export function UpdateBanner() {
 
   return (
     <div
-      className="sticky top-[64px] z-50 flex flex-wrap items-center gap-2 border-b-2 border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-extrabold text-indigo-900 md:top-[69px]"
+      className="update-banner sticky top-[64px] z-50 flex flex-wrap items-center gap-2 border-b-2 border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-extrabold text-indigo-900 md:top-[69px]"
       role="status"
     >
       {needsReload ? (
         <>
           <Sparkles className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />
           <span className="min-w-0 flex-1">
-            A new version of ElevenSpark is ready (v{APP_VERSION} · Bank v{QUESTION_BANK_VERSION}). Tap
-            to update.
+            A new version of ElevenSpark is ready. Tap to update.
           </span>
           <button
             type="button"

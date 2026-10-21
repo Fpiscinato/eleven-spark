@@ -19,6 +19,8 @@ export interface ExamSectionConfig {
 export interface ExamConfig {
   mode: ExamMode
   title: string
+  /** Short name used in the compact mock header (a phone has no room). */
+  shortTitle: string
   subtitle: string
   blurb: string
   sections: readonly ExamSectionConfig[]
@@ -33,6 +35,7 @@ export const EXAM_CONFIGS: Record<ExamMode, ExamConfig> = {
   mock_paper_1: {
     mode: 'mock_paper_1',
     title: 'Paper 1: FSCE Adventure Paper (~45 min)',
+    shortTitle: 'Adventure',
     subtitle: 'Section A: English Comprehension & Vocabulary (22 min) → Section B: KS2 Maths Fluency (23 min)',
     blurb:
       'The G7 FSCE Adventure Paper: Multiple choice focused on quick fluency. Section A (English Comprehension & Vocabulary), then a strict section lock, then Section B (KS2 Maths Fluency).',
@@ -59,6 +62,7 @@ export const EXAM_CONFIGS: Record<ExamMode, ExamConfig> = {
   mock_paper_2: {
     mode: 'mock_paper_2',
     title: 'Paper 2: FSCE Beacon Paper (~45 min - Written & Creative)',
+    shortTitle: 'Beacon',
     subtitle: 'Section A: Written answers (25 min) → Section B: Creative Writing Task (20 min)',
     blurb:
       'The G7 FSCE Beacon Paper: Section A with written answers (type exact values/completions), strict section lock, then Section B Creative Writing Task with interactive rubric.',
@@ -88,6 +92,7 @@ export const EXAM_CONFIGS: Record<ExamMode, ExamConfig> = {
   mock_paper_3: {
     mode: 'mock_paper_3',
     title: 'Paper 3: FSCE Compass Paper (~40 min - Across the Curriculum)',
+    shortTitle: 'Compass',
     subtitle: 'Section A: Across the Curriculum',
     blurb:
       'The G7 FSCE Compass Paper: Multiple choice interdisciplinary questions across Science, History, Geography, Computing, Arts, Music evaluating data interpretation and academic curiosity.',
@@ -106,6 +111,7 @@ export const EXAM_CONFIGS: Record<ExamMode, ExamConfig> = {
   mini_mock: {
     mode: 'mini_mock',
     title: 'Mini-Mock FSCE (20 min)',
+    shortTitle: 'Mini-Mock',
     subtitle: 'Adventure + Compass mixed · 24 questions',
     blurb:
       'A short FSCE-style run for busy weekdays: combining Adventure and Compass content for quick practice.',

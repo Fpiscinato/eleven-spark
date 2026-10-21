@@ -7,7 +7,7 @@ import { capTimeSpent } from '../lib/timing'
 import { SUBJECT_META } from '../lib/theme'
 import { MathText } from './exam/MathText'
 import { QuestionView } from './exam/QuestionView'
-import { FeedbackBanner, btnPrimaryClass, btnSecondaryClass, cardClass } from './ui'
+import { FeedbackBanner, btnPrimaryClass, cardClass } from './ui'
 
 const PRAISE = [
   'Brilliant!',
@@ -196,75 +196,91 @@ export function QuizRunner({
   const isLast = index === questions.length - 1
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4">
-      <div className={`${cardClass} flex flex-wrap items-center justify-between gap-3`}>
-        <div className="flex items-center gap-3">
-          <div className="h-3 w-40 overflow-hidden rounded-full bg-slate-100 md:w-56">
-            <div
-              className="h-full rounded-full bg-indigo-600 transition-all"
-              style={{ width: `${((index + 1) / questions.length) * 100}%` }}
-            />
+    <div className="focus-layer fixed inset-0 z-50 flex justify-center bg-gradient-to-br from-slate-100 to-indigo-50 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-6 md:py-4">
+      <div className="mx-auto flex h-full w-full max-w-4xl flex-col gap-2">
+        <div className="flex shrink-0 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-2.5 py-1.5 shadow-sm">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full bg-indigo-600 transition-all"
+                style={{ width: `${((index + 1) / questions.length) * 100}%` }}
+              />
+            </div>
+            <span className="text-xs font-extrabold text-slate-600 tabular-nums">
+              {index + 1}/{questions.length}
+            </span>
           </div>
-          <span className="text-sm font-extrabold text-slate-600">
-            {index + 1} / {questions.length}
+          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-black text-slate-600 tabular-nums">
+            {formatClock(elapsed)}
           </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-bold text-slate-500 tabular-nums">{formatClock(elapsed)}</span>
-          <button type="button" onClick={stopEarly} className={`${btnSecondaryClass} min-h-[44px] px-4 py-2 text-sm`}>
+          <button
+            type="button"
+            onClick={stopEarly}
+            aria-label="Stop and save"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border-2 border-slate-200 bg-white text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700"
+          >
             <Square className="h-4 w-4" aria-hidden="true" />
-            Stop & save
           </button>
         </div>
-      </div>
 
-      <QuestionView
-        key={question.id}
-        question={question}
-        passage={passage}
-        questionNumber={index + 1}
-        totalQuestions={questions.length}
-        selectedIndex={answer ?? null}
-        onSelect={(optionIndex) => void handleSelect(optionIndex)}
-        locked={isAnswered}
-        showFeedback={isAnswered}
-        showStrategy
-      />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain pr-1">
+            <QuestionView
+              key={question.id}
+              question={question}
+              passage={passage}
+              compact
+              twoColumns
+              questionNumber={index + 1}
+              totalQuestions={questions.length}
+              selectedIndex={answer ?? null}
+              onSelect={(optionIndex) => void handleSelect(optionIndex)}
+              locked={isAnswered}
+              showFeedback={isAnswered}
+              showStrategy
+            />
 
-      {isAnswered ? (
-        <div className="flex flex-col gap-3">
-          <FeedbackBanner correct={answer === question.correctIndex}>
-            {answer === question.correctIndex
-              ? `${praise} The answer is ${['A', 'B', 'C', 'D', 'E'][question.correctIndex]}.`
-              : `Not quite this time — the answer is ${['A', 'B', 'C', 'D', 'E'][question.correctIndex]}.`}
-          </FeedbackBanner>
-          <div className={`${cardClass} flex gap-3`}>
-            <div className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700">
-              <Lightbulb className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <div>
-              <p className="mb-1 text-sm font-black uppercase tracking-wide text-slate-500">Explanation</p>
-              <p className="text-base font-semibold leading-relaxed text-slate-800">
-                <MathText text={question.explanation} />
+            {isAnswered ? (
+              <div className="flex flex-col gap-3">
+                <FeedbackBanner correct={answer === question.correctIndex}>
+                  {answer === question.correctIndex
+                    ? `${praise} The answer is ${['A', 'B', 'C', 'D', 'E'][question.correctIndex]}.`
+                    : `Not quite this time — the answer is ${['A', 'B', 'C', 'D', 'E'][question.correctIndex]}.`}
+                </FeedbackBanner>
+                <div className={`${cardClass} flex gap-3`}>
+                  <div className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700">
+                    <Lightbulb className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-sm font-black uppercase tracking-wide text-slate-500">Explanation</p>
+                    <p className="text-base font-semibold leading-relaxed text-slate-800">
+                      <MathText text={question.explanation} />
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {correctCount > 0 ? (
+              <p className="text-center text-sm font-extrabold text-indigo-600">
+                {correctCount} correct so far — keep it up!
               </p>
-            </div>
+            ) : null}
           </div>
-          <button type="button" onClick={goNext} className={btnPrimaryClass}>
-            {isLast ? 'See my results' : 'Next question'}
-          </button>
         </div>
-      ) : (
-        <p className="text-center text-sm font-bold text-slate-400">
-          Mode: {mode === 'mistake_clinic' ? 'Mistake Clinic' : 'Quick Practice'} — take your time and read
-          every option.
-        </p>
-      )}
 
-      {correctCount > 0 ? (
-        <p className="text-center text-sm font-extrabold text-indigo-600">
-          {correctCount} correct so far — keep it up!
-        </p>
-      ) : null}
+        <footer className="shrink-0 rounded-2xl border-2 border-slate-200 bg-white px-3 py-2.5 shadow-sm">
+          {isAnswered ? (
+            <button type="button" onClick={goNext} className={`${btnPrimaryClass} !min-h-[40px] w-full !py-1.5 text-sm`}>
+              {isLast ? 'See my results' : 'Next'}
+            </button>
+          ) : (
+            <p className="py-1 text-center text-xs font-bold text-slate-500">
+              {mode === 'mistake_clinic' ? 'Mistake Clinic' : 'Quick Practice'} — read every option.
+            </p>
+          )}
+        </footer>
+      </div>
     </div>
   )
 }

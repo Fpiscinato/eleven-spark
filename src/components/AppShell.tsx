@@ -1,9 +1,7 @@
 import { BarChart3, BookOpen, ClipboardList, Home, Lock, Settings, Timer, TrendingUp, Unlock, X, Zap } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useParentAutoLock, useParentGate } from '../context/ParentGateContext'
-import { VERSION_SEAL } from '../config/version'
 import { ElevenSparkLogo } from './brand/ElevenSparkLogo'
-import { VersionBadge } from './brand/VersionBadge'
 import { MotivationalCard } from './MotivationalCard'
 import { ProfileSwitcher } from './ProfileSwitcher'
 import { SyncStatusBadge } from './SyncStatusBadge'
@@ -102,7 +100,6 @@ export function AppShell({ screen, onNavigate, children }: AppShellProps) {
           </button>
           <MotivationalCard />
         </div>
-        <p className="px-6 pb-5 text-xs font-bold text-slate-400">{VERSION_SEAL}</p>
       </aside>
 
       <header className="app-print-header sticky top-0 z-40 flex h-[64px] items-center gap-2 border-b border-slate-200 bg-white px-2 md:h-[69px] md:gap-3 md:px-6">
@@ -184,9 +181,6 @@ export function AppShell({ screen, onNavigate, children }: AppShellProps) {
           ) : null}
           {screen === 'mock' ? null : <MotivationalCard variant="compact" className="mb-4 md:hidden" />}
           {children}
-          <div className="no-print mt-8 flex justify-center pb-2 md:hidden">
-            <VersionBadge />
-          </div>
         </div>
       </main>
 

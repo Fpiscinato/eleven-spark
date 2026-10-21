@@ -3,6 +3,7 @@ import {
   ClipboardList,
   Flag,
   Info,
+  ListChecks,
   Lock,
   LockOpen,
   PencilLine,
@@ -143,6 +144,13 @@ function letterOf(index: number | null): string {
   return LETTERS[index] ?? 'Blank'
 }
 
+/** Turns a stored topic id such as `letter_codes` into "Letter Codes". */
+function humanizeTopic(topic: string): string {
+  return topic
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase())
+}
+
 function parseAnswerLetters(raw: string): string {
   return raw.toUpperCase().replace(/[^A-E]/g, '')
 }
@@ -188,18 +196,21 @@ async function loadSectionsForConfig(config: ExamConfig): Promise<{
       continue
     }
     const loaded = await loadQuestionsForSubjects(section.subjects)
-    // A written-answers section must actually ask for written answers. The
-    // short_text questions are placed first inside every topic group, so each
-    // topic still contributes to the paper but the child types her answers
-    // instead of ticking A-E wherever the bank allows it.
+    // A written-answers section must actually ask for written answers. When
+    // the bank has enough short_text questions, the paper uses only those, so
+    // the child really types her answers instead of ticking A-E. If the bank
+    // is short, the short_text questions come first and the rest fill in.
+    const writtenPool = loaded.questions.filter((question) => question.answerType === 'short_text')
     const pool =
-      section.writtenMode === true
-        ? [...loaded.questions].sort((a, b) => {
-            const aWritten = a.answerType === 'short_text' ? 0 : 1
-            const bWritten = b.answerType === 'short_text' ? 0 : 1
-            return aWritten - bWritten
-          })
-        : loaded.questions
+      section.writtenMode === true && writtenPool.length >= section.questionCount
+        ? writtenPool
+        : section.writtenMode === true
+          ? [...loaded.questions].sort((a, b) => {
+              const aWritten = a.answerType === 'short_text' ? 0 : 1
+              const bWritten = b.answerType === 'short_text' ? 0 : 1
+              return aWritten - bWritten
+            })
+          : loaded.questions
     const chosen = pickBalancedQuestions(pool, section.questionCount, (question) =>
       question.topic ?? question.subject,
     )
@@ -524,6 +535,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
   const [reviewOpen, setReviewOpen] = useState(false)
   const [cancelStep, setCancelStep] = useState<0 | 1 | 2>(0)
   const [scratchOpen, setScratchOpen] = useState(false)
+  const [jumpOpen, setJumpOpen] = useState(false)
   const { activeProfileId } = useProfile()
   const { parentMode, requestUnlock } = useParentGate()
   const questionShownAtRef = useRef(0)
@@ -1411,8 +1423,8 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
   const rubricComplete = CREATIVE_RUBRIC.every((criterion) => (engine.creativeScores?.[criterion] ?? 0) > 0)
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-center overflow-y-auto bg-gradient-to-br from-slate-100 to-indigo-50 px-3 py-3 md:overflow-hidden md:px-6 md:py-4">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 md:h-full md:min-h-0 md:overflow-hidden">
+    <div className="focus-layer fixed inset-0 z-50 flex justify-center bg-gradient-to-br from-slate-100 to-indigo-50 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-6 md:py-4">
+      <div className="mx-auto flex h-full w-full max-w-4xl flex-col gap-2">
       {alert ? (
         <div
           role="status"
@@ -1429,7 +1441,8 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
 
       <div className={`${cardClass} !p-2.5 flex shrink-0 flex-wrap items-center justify-between gap-2 md:!p-3`}>
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-sm font-black text-slate-900">{engine.config.title}</span>
+          <span className="text-sm font-black text-slate-900 sm:hidden">{engine.config.shortTitle}</span>
+          <span className="hidden text-sm font-black text-slate-900 sm:inline">{engine.config.title}</span>
           {engine.config.sections.map((section, index) => {
             const state =
               index < engine.sectionIndex ? 'locked' : index === engine.sectionIndex ? 'active' : 'upcoming'
@@ -1452,7 +1465,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
           })}
           {question ? (
             <span className="hidden max-w-[10rem] truncate rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-600 sm:inline-block">
-              {question.topic}
+              {humanizeTopic(question.topic)}
             </span>
           ) : null}
         </div>
@@ -1474,7 +1487,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex flex-col gap-3 pb-24 md:pb-2 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:pr-1">
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain pr-1">
           {!isCreativeWriting && sectionQuestionsList.length > 0 && question ? (
           <div className={`${cardClass} !p-2.5 flex flex-wrap items-center justify-between gap-2 md:!p-3`}>
             <span className="text-xs font-bold text-slate-600">
@@ -1483,8 +1496,17 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
+                onClick={() => setJumpOpen((open) => !open)}
+                aria-expanded={jumpOpen}
+                className={`${btnSecondaryClass} !min-h-[36px] !px-2.5 !py-1 !text-xs`}
+              >
+                <ListChecks className="h-3.5 w-3.5" aria-hidden="true" />
+                Jump to
+              </button>
+              <button
+                type="button"
                 onClick={toggleFlag}
-                className={`${btnSecondaryClass} !min-h-[32px] !px-2.5 !py-1 !text-xs ${engine.flags[question.id] === true ? 'border-amber-400 bg-amber-100 text-amber-900' : ''}`}
+                className={`${btnSecondaryClass} !min-h-[36px] !px-2.5 !py-1 !text-xs ${engine.flags[question.id] === true ? 'border-amber-400 bg-amber-100 text-amber-900' : ''}`}
               >
                 <Flag className="h-3.5 w-3.5" aria-hidden="true" />
                 {engine.flags[question.id] === true ? 'Flagged' : 'Flag'}
@@ -1492,20 +1514,55 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
               <button
                 type="button"
                 onClick={() => setFinishStep(1)}
-                className={`${btnSecondaryClass} !min-h-[32px] !px-2.5 !py-1 !text-xs`}
+                className={`${btnSecondaryClass} !min-h-[36px] !px-2.5 !py-1 !text-xs`}
               >
                 Finish early
               </button>
               <button
                 type="button"
                 onClick={() => setCancelStep(1)}
-                className={`${btnSecondaryClass} !min-h-[32px] !px-2.5 !py-1 !text-xs text-rose-700`}
+                className={`${btnSecondaryClass} !min-h-[36px] !px-2.5 !py-1 !text-xs text-rose-700`}
               >
                 Cancel
               </button>
             </div>
           </div>
-      ) : null}
+          ) : null}
+
+          {jumpOpen && !isCreativeWriting && sectionQuestionsList.length > 0 ? (
+            <div className={`${cardClass} !p-2.5 md:!p-3`}>
+              <div className="flex flex-wrap gap-1.5" aria-label="Jump to question">
+                {sectionQuestionsList.map((item, index) => {
+                  const answered =
+                    engine.answers[item.id] !== null &&
+                    engine.answers[item.id] !== undefined &&
+                    engine.answers[item.id] !== ''
+                  const flagged = engine.flags[item.id] === true
+                  const current = index === engine.cursor
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        goToQuestion(index)
+                        setJumpOpen(false)
+                      }}
+                      aria-label={`Question ${index + 1}${answered ? ', answered' : ''}${flagged ? ', flagged' : ''}`}
+                      className={`grid h-9 w-9 place-items-center rounded-lg border-2 text-xs font-extrabold transition ${
+                        current
+                          ? 'border-indigo-600 bg-indigo-600 text-white'
+                          : answered
+                            ? 'border-indigo-200 bg-indigo-100 text-indigo-800'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                      } ${flagged ? 'outline-2 outline-offset-1 outline-amber-400' : ''}`}
+                    >
+                      {index + 1}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
 
       {isCreativeWriting ? (
         <div className={`${cardClass} flex flex-col gap-4`}>
@@ -1625,12 +1682,12 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
       </div>
 
       {!isCreativeWriting && sectionQuestionsList.length > 0 && question ? (
-      <div className="sticky bottom-[env(safe-area-inset-bottom)] z-20 -mx-3 shrink-0 flex justify-between gap-3 bg-white px-3 py-2 md:static md:mx-0 md:bg-transparent md:px-0">
+      <div className="flex shrink-0 items-center justify-between gap-3 rounded-2xl border-2 border-slate-200 bg-white px-3 py-2 shadow-sm">
         <button
           type="button"
           onClick={() => goToQuestion(Math.max(0, engine.cursor - 1))}
           disabled={engine.cursor === 0}
-          className={`${btnSecondaryClass} !min-h-[36px] !px-3 !py-1.5 !text-sm`}
+          className={`${btnSecondaryClass} !min-h-[40px] !px-3 !py-1.5 !text-sm`}
         >
           Previous
         </button>
@@ -1638,7 +1695,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
           <button
             type="button"
             onClick={() => setFinishStep(1)}
-            className={`${btnPrimaryClass} !min-h-[36px] !px-3 !py-1.5 !text-sm`}
+            className={`${btnPrimaryClass} !min-h-[40px] !px-3 !py-1.5 !text-sm`}
           >
             Finish {sectionConfig.title}
           </button>
@@ -1646,7 +1703,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
           <button
             type="button"
             onClick={() => goToQuestion(engine.cursor + 1)}
-            className={`${btnPrimaryClass} !min-h-[36px] !px-3 !py-1.5 !text-sm`}
+            className={`${btnPrimaryClass} !min-h-[40px] !px-3 !py-1.5 !text-sm`}
           >
             Next
           </button>

@@ -179,6 +179,13 @@ function MockScoreChart({ sessions, showGoals }: { sessions: Session[]; showGoal
   )
 }
 
+/** Turns a stored topic id such as `word_classes` into "Word Classes". */
+function humanizeTopic(topic: string): string {
+  return topic
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase())
+}
+
 function TopicChip({
   cell,
   onNavigate,
@@ -190,15 +197,18 @@ function TopicChip({
     <button
       type="button"
       onClick={() => onNavigate('practice', { subject: cell.subject, topic: cell.topic })}
-      className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left transition hover:border-indigo-300 hover:bg-indigo-50 active:scale-[0.99]"
+      className="flex min-h-[48px] w-full items-start justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left transition hover:border-indigo-300 hover:bg-indigo-50 active:scale-[0.99]"
       title={`Practise ${cell.topic}`}
     >
-      <span className="min-w-0">
-        <span className="block truncate text-sm font-extrabold text-slate-800">
-          {SUBJECT_META[cell.subject].label} · {cell.topic}
+      <span className="min-w-0 flex-1">
+        {/* The topic is the part that changes from chip to chip, so it comes
+            first and is allowed to wrap instead of being cut off. */}
+        <span className="block text-sm font-extrabold leading-snug break-words text-slate-800">
+          {humanizeTopic(cell.topic)}
         </span>
-        <span className="block text-xs font-bold text-slate-500">
-          {cell.total} answered · {cell.avgTimeSeconds}s vs {cell.avgTargetSeconds}s target
+        <span className="mt-0.5 block text-xs font-bold text-slate-500">
+          {SUBJECT_META[cell.subject].label} · {cell.total} answered · {cell.avgTimeSeconds}s vs{' '}
+          {cell.avgTargetSeconds}s target
         </span>
       </span>
       <span className="shrink-0 rounded-xl bg-indigo-100 px-2 py-1 text-sm font-black text-indigo-700">
@@ -365,18 +375,22 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
                 </button>
               ) : null}
             </div>
-            <div className={`flex flex-col gap-4 ${showAllTopics ? '' : 'max-h-[22rem] overflow-hidden'}`}>
+            <div className="flex flex-col gap-4">
               {(Object.keys(STUDENT_META) as StudentBucket[]).map((bucket) => {
                 const meta = STUDENT_META[bucket]
                 const bucketCells = studentCells(bucket)
                 if (bucketCells.length === 0) return null
+                // Collapsed mode shows a few topics per group; nothing is cut
+                // off halfway, the "Show all" button opens the rest.
+                const visible = showAllTopics ? bucketCells : bucketCells.slice(0, TOPIC_PREVIEW)
+                if (visible.length === 0) return null
                 return (
                   <div key={bucket}>
                     <p className="mb-2 text-sm font-black text-slate-700">
                       {meta.emoji} {meta.label}
                     </p>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {(showAllTopics ? bucketCells : bucketCells.slice(0, TOPIC_PREVIEW)).map((cell) => (
+                      {visible.map((cell) => (
                         <TopicChip key={`${cell.subject}-${cell.topic}`} cell={cell} onNavigate={onNavigate} />
                       ))}
                     </div>
@@ -509,11 +523,7 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
               </button>
             </div>
           ) : null}
-          <div
-            className={`grid grid-cols-1 gap-3 md:grid-cols-2 ${
-              showMatrix ? '' : 'max-h-[24rem] overflow-hidden'
-            }`}
-          >
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="md:col-span-2">
               <p className="mb-1.5 text-xs font-black uppercase tracking-wide text-slate-400">
                 Strong (80–100%)
@@ -546,6 +556,8 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
               </div>
             </div>
 
+            {showMatrix ? (
+              <>
             <div className="md:col-span-2">
               <p className="mb-1.5 text-xs font-black uppercase tracking-wide text-slate-400">
                 Developing (65–79%)
@@ -596,6 +608,8 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
                 ) : null}
               </div>
             </div>
+              </>
+            ) : null}
           </div>
           </>
         )}

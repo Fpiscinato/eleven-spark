@@ -7,7 +7,7 @@ import { MathText } from './MathText'
 import { NvrFigureSvg, NvrSvgRenderer } from './NvrSvgRenderer'
 import { ScratchpadOverlay } from './ScratchpadOverlay'
 
-const PASSAGE_FONT = '400 15px Nunito, "Segoe UI", system-ui, sans-serif'
+const PASSAGE_FONT = '400 17px Nunito, "Segoe UI", system-ui, sans-serif'
 
 let measureContext: CanvasRenderingContext2D | null = null
 
@@ -74,7 +74,7 @@ function LineNumberedPassage({
     })
   }, [content, widthPx, fontVersion])
   return (
-    <div className="overflow-x-hidden text-[15px] leading-7 text-slate-800">
+    <div className="overflow-x-hidden text-[17px] leading-8 text-slate-800">
       {lines.map((line, index) => {
         if (line.text === '') {
           return <div key={index} className="h-6" aria-hidden="true" />
@@ -389,12 +389,14 @@ export function QuestionView({
     if (!passage || !box) return
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0]
-      if (entry) {
+      // A hidden box (the mobile "Question" tab) measures zero: keeping the
+      // last real width stops the passage from being wrapped for a phone.
+      if (entry && entry.contentRect.width > 0) {
         setPassageWidth(Math.max(160, entry.contentRect.width - 24))
       }
     })
     observer.observe(box)
-    setPassageWidth(Math.max(160, box.clientWidth - 24))
+    if (box.clientWidth > 0) setPassageWidth(Math.max(160, box.clientWidth - 24))
     return () => observer.disconnect()
   }, [passage])
 
@@ -463,7 +465,7 @@ export function QuestionView({
 
       {passage ? (
         <>
-          <div className="flex gap-2 md:hidden" role="tablist" aria-label="Reading view">
+          <div className="flex gap-2 lg:hidden" role="tablist" aria-label="Reading view">
             <button
               type="button"
               role="tab"
@@ -491,10 +493,10 @@ export function QuestionView({
               📖 Read Text
             </button>
           </div>
-          <div className={`grid gap-4 md:grid-cols-2 md:items-start ${compact ? 'md:gap-3' : ''}`}>
+          <div className={`grid gap-4 lg:grid-cols-2 lg:items-start ${compact ? 'lg:gap-3' : ''}`}>
             <section
               ref={passageBoxRef}
-              className={`${mobileView === 'text' ? 'block' : 'hidden'} rounded-3xl border border-slate-200 bg-white shadow-sm md:block ${
+              className={`${mobileView === 'text' ? 'block' : 'hidden'} rounded-3xl border border-slate-200 bg-white shadow-sm lg:block ${
                 compact ? 'p-3' : 'p-4 md:p-5'
               }`}
               aria-label="Reading passage"
@@ -503,7 +505,7 @@ export function QuestionView({
                 <BookOpen className="h-5 w-5 text-indigo-600" aria-hidden="true" />
                 <h3 className="text-base font-extrabold text-slate-900">{passage.title}</h3>
               </div>
-              <div className={`overflow-y-auto pr-1 ${compact ? 'max-h-[52vh] md:max-h-[48vh]' : 'max-h-[70vh] md:max-h-[64vh]'}`}>
+              <div className={`overflow-y-auto pr-1 ${compact ? 'max-h-[46vh] lg:max-h-[58vh]' : 'max-h-[70vh] md:max-h-[64vh]'}`}>
                 <LineNumberedPassage
                   content={passage.content}
                   widthPx={passageWidth}
@@ -512,7 +514,7 @@ export function QuestionView({
               </div>
             </section>
             <section
-              className={`${mobileView === 'question' ? 'flex' : 'hidden'} flex-col rounded-3xl border border-slate-200 bg-white shadow-sm md:flex ${
+              className={`${mobileView === 'question' ? 'flex' : 'hidden'} flex-col rounded-3xl border border-slate-200 bg-white shadow-sm lg:flex ${
                 compact ? 'gap-2.5 p-3' : 'gap-4 p-4 md:p-5'
               }`}
             >

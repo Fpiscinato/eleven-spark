@@ -177,6 +177,22 @@ button {
 [data-theme='dark'] .bg-emerald-50 { background-color: rgb(6 78 59 / 0.35); }
 [data-theme='dark'] .bg-indigo-100 { background-color: rgb(67 56 202 / 0.3); }
 [data-theme='dark'] .bg-indigo-50 { background-color: rgb(49 46 129 / 0.35); }
+
+/* The offline/update banner floats over the page, so it must be solid:
+   a translucent background would let the text underneath show through. */
+[data-theme='dark'] .update-banner {
+  background-color: #1e1b4b;
+  border-color: #312e81;
+  color: #e0e7ff;
+}
+
+/* The focus layer (Practice / Mock / Mistake Clinic) covers the whole app.
+   In dark mode the gradient is translucent, so the page behind would show
+   through: it gets a solid background instead. */
+[data-theme='dark'] .focus-layer {
+  background-color: #0b1120;
+  background-image: linear-gradient(to bottom right, #0b1120, #1e1b4b);
+}
 [data-theme='dark'] .bg-orange-100 { background-color: rgb(154 52 18 / 0.3); }
 [data-theme='dark'] .bg-orange-50 { background-color: rgb(124 45 18 / 0.35); }
 [data-theme='dark'] .bg-rose-100 { background-color: rgb(159 18 57 / 0.3); }
