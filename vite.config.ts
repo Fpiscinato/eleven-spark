@@ -53,4 +53,20 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    // The heavy libraries are split into their own files so the browser can
+    // cache them separately and the app shell stays small on a tablet.
+    rolldownOptions: {
+      output: {
+        advancedChunks: {
+          groups: [
+            { name: 'katex', test: /node_modules[\\/]katex/ },
+            { name: 'dexie', test: /node_modules[\\/]dexie/ },
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+          ],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 550,
+  },
 })

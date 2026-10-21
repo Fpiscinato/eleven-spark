@@ -1,6 +1,8 @@
 import type { Subject } from '../db/schemas'
 
 export interface TopicStrategy {
+  /** The fundamental idea behind this type of question. */
+  concept: string
   attention: string
   trap: string
   steps: [string, string, string]
@@ -8,6 +10,8 @@ export interface TopicStrategy {
 
 const SUBJECT_FALLBACK: Record<Subject, TopicStrategy> = {
   english: {
+    concept:
+      'Every comprehension answer is proved by a line in the text. The words on the page are the evidence — your own general knowledge never is.',
     attention: 'Read the question first, then hunt for the answer in the text. Answers are always hiding in the words on the page.',
     trap: 'Picking an option that "sounds nice" instead of one you can prove from the passage.',
     steps: [
@@ -17,6 +21,8 @@ const SUBJECT_FALLBACK: Record<Subject, TopicStrategy> = {
     ],
   },
   vr: {
+    concept:
+      'Verbal reasoning is about spotting the rule that links the examples, then applying that same rule to the question. There is always a pattern — never a guess.',
     attention: 'Verbal reasoning is pattern-finding with letters and words. Say the pattern in your head before you look at the options.',
     trap: 'Rushing into an option that is almost right — the traps are usually one letter or one step out.',
     steps: [
@@ -26,6 +32,8 @@ const SUBJECT_FALLBACK: Record<Subject, TopicStrategy> = {
     ],
   },
   maths: {
+    concept:
+      'Every maths question is a short story about numbers. Your job is to work out which operation the story is asking for before you start calculating.',
     attention: 'Spot the operation the question wants (add, subtract, multiply, divide, or a fraction/percentage of an amount) before calculating.',
     trap: 'Answering with the right number but the wrong units — cm vs cm², hours vs minutes, £ vs p.',
     steps: [
@@ -35,6 +43,8 @@ const SUBJECT_FALLBACK: Record<Subject, TopicStrategy> = {
     ],
   },
   compass: {
+    concept:
+      'The Compass Paper rewards careful reading. Every answer can be proved from the table, diagram, rule or text in front of you — nothing needs outside knowledge.',
     attention:
       'The Compass Paper is about reading carefully and working things out from the information on the page. Every answer can be proved from the table, the diagram, the rule or the text in front of you.',
     trap:
@@ -46,6 +56,8 @@ const SUBJECT_FALLBACK: Record<Subject, TopicStrategy> = {
     ],
   },
   nvr: {
+    concept:
+      'Non-verbal reasoning is pattern-spotting. Name what changes between the pictures (S.P.A.N.S.: Shape, Position, Angle, Number, Shading) and the answer usually appears by itself.',
     attention: 'Use S.P.A.N.S.: Shape, Position, Angle, Number, Shading. Check one letter at a time until the pattern clicks.',
     trap: 'Following the first pattern you see when the picture actually changes in two ways at once.',
     steps: [
@@ -58,6 +70,8 @@ const SUBJECT_FALLBACK: Record<Subject, TopicStrategy> = {
 
 const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
   'vr:letter_codes': {
+    concept:
+      'A letter code is a Caesar-style shift: every letter moves the same number of places, in the same direction. Find the shift once and reuse it.',
     attention:
       'Write the alphabet ruler A–Z above your paper and slide your finger along it. Every letter in the code moves the same number of places, so find the shift once and reuse it.',
     trap: 'Forgetting to keep the same direction — letters can move forward (+) or backward (−), and mixing them up costs the whole question.',
@@ -68,6 +82,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'vr:move_one_letter': {
+    concept:
+      'Exactly one letter is picked up and moved somewhere else; the other letters keep their order. That single move is what turns the word around.',
     attention:
       'Exactly one letter is picked up and moved somewhere else; the other letters keep their order. Test every letter as the "mover" until a real word appears.',
     trap: 'Swapping two letters or reversing the word — that is moving two letters, which is not allowed.',
@@ -78,6 +94,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'vr:hidden_words': {
+    concept:
+      'A hidden word is a real word hiding inside the letters in order, without skipping or jumping.',
     attention:
       'The hidden word runs straight through the letters without jumping. Run your finger left to right looking for a real four-letter word inside the string.',
     trap: 'Reading letters backwards or skipping letters — GL only hides words in order, so "KLOUFD" hiding CLOUD would be cheating.',
@@ -88,6 +106,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'vr:letter_series': {
+    concept:
+      'A letter series has two rhythms at once: a jump inside each pair and a jump from one pair to the next. Both rhythms stay the same.',
     attention:
       'Write the alphabet underneath and count the jumps twice: the jump inside each pair, and the jump from one pair to the next. Both jumps stay the same.',
     trap: 'Only counting one of the two patterns — GL loves series where the letters inside a pair jump by 2, while the pairs themselves jump by 3.',
@@ -98,6 +118,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'vr:number_sequences': {
+    concept:
+      'A number sequence is one rule repeated. Find the gap between neighbours; if the gap itself changes, look for a second rule (squares, ×2, or +2 then +3 then +4).',
     attention:
       'Find the difference between neighbours first. If the difference itself changes, look for a second rule (squares, ×2 each time, or +2 then +3 then +4).',
     trap: 'Stopping at the first rule you find — "2, 4, 8, 16" could be ×2, but "2, 4, 8, 14" hides +2, +4, +6.',
@@ -108,6 +130,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'vr:synonyms_antonyms': {
+    concept:
+      'A synonym means the same thing; an antonym means the opposite. The meaning of the word matters far more than the topic it belongs to.',
     attention:
       'Cover the options and think of your own word first. A synonym means the same; an antonym means the opposite. Year 6 favourites: ancient/modern, fragile/sturdy, abundant/scarce.',
     trap: 'Choosing a word from the same topic rather than the same meaning — "doctor" and "hospital" go together, but they are not synonyms.',
@@ -118,6 +142,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'vr:letter_number_algebra': {
+    concept:
+      'Letters are masks over digits. Write the value of every letter above the word before you calculate anything, then decide whether to join the digits or add them.',
     attention:
       'Each letter is a mask over a digit. Write the value of every letter above the word before you calculate anything.',
     trap: 'Adding the digits when the question wants them written together (AB with A = 3, B = 5 is 35, not 8) — read carefully which one is asked.',
@@ -128,6 +154,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'maths:fractions': {
+    concept:
+      'A fraction splits a whole into equal parts. The bottom number (denominator) says how many parts the whole was cut into; the top number (numerator) says how many of those parts you have. "Of" always means multiply.',
     attention:
       'Of means multiply. "¾ of 48" is ¾ × 48: divide by the bottom first, then multiply by the top.',
     trap: 'Multiplying before dividing — with big numbers that almost always goes wrong.',
@@ -138,6 +166,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'maths:decimals_percentages': {
+    concept:
+      'Percent means "out of 100". Use friendly anchors — 50% is half, 25% is a quarter, 10% is a tenth — then build any other percentage from them.',
     attention:
       'Percent means "out of 100". Convert with friendliest anchors: 50% is half, 25% is a quarter, 10% is divide by ten — then build up (15% = 10% + 5%).',
     trap: 'Mixing pounds and pence. £3.50 is 350p, and 10% of £3.50 is 35p, not £3.5p in your answer.',
@@ -148,6 +178,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'maths:ratio_proportion': {
+    concept:
+      'A ratio shares an amount into parts. Add the parts to find the size of one part, then multiply to find any share. Scaling a recipe is the same idea in reverse.',
     attention:
       'Add the ratio parts, then find the value of one part. Sharing £60 in the ratio 2:1 means 3 parts, so one part is £20.',
     trap: 'Forgetting to include the total number of people or parts when scaling a recipe up or down.',
@@ -158,6 +190,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'maths:algebra_sequences': {
+    concept:
+      'An nth term rule is a recipe: n is the position of the term (1st, 2nd, 3rd...) and the rule tells you exactly what to do with that position.',
     attention:
       'In an nth term rule like 3n + 2, the n is the position (1st, 2nd, 3rd...). Plug the position in; do not multiply the terms themselves.',
     trap: 'Sign slips when moving terms across the equals sign — "5x − 7 = 38" becomes 5x = 45, not 31.',
@@ -168,6 +202,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'maths:geometry': {
+    concept:
+      'Geometry questions are formulas. Know which one you need (angles on a line, polygon interior, area, perimeter, volume) and then substitute carefully.',
     attention:
       'Interior angles of a regular polygon: add 180° × (sides − 2), then divide by the number of sides. Angles on a straight line add to 180°; around a point, 360°.',
     trap: 'Area needs square units (length × width) while perimeter needs single units (add all the sides) — keep them apart.',
@@ -178,6 +214,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'maths:timetables_speed': {
+    concept:
+      'Speed is distance divided by time. Timetable questions are careful counting forwards from the departure time, always in sensible jumps.',
     attention:
       'Speed = distance ÷ time. For timetables, count on from the departure time in sensible jumps (15, 30, 45 minutes) and always write 24-hour times the same way.',
     trap: 'Mixing hours and minutes — 1 hour 40 minutes is 100 minutes, not 140, when you divide.',
@@ -188,8 +226,9 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'maths:averages': {
-    attention:
-      'Mean = total ÷ how many. Median = middle value once they are in order. Mode = most frequent. Range = biggest minus smallest.',
+    concept:
+      'Mean, median, mode and range each summarise data in a different way. Sorting the numbers first is the trick that makes all four easy.',
+    attention: 'Mean = total ÷ how many. Median = middle value once they are in order. Mode = most frequent. Range = biggest minus smallest.',
     trap: 'Finding the median from an unordered list — always sort first, and if there are two middle numbers, average them.',
     steps: [
       'Check which average the question wants (mean, median, mode, range).',
@@ -198,6 +237,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'nvr:matrices': {
+    concept:
+      'A matrix changes in two directions at once — across the row and down the column. Both rules run at the same time, and the traps break only one of them.',
     attention:
       'Matrices change in two directions at once. Across a row, watch the columns; down a column, watch the rows. Use S.P.A.N.S.: Shape, Position, Angle, Number, Shading.',
     trap: 'Fixing on only one rule — most traps are a figure that is right about the shape but wrong about the shading or dots.',
@@ -208,6 +249,7 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'nvr:sequences': {
+    concept: 'A sequence is one change repeated. Name the change, confirm it twice, then apply it once more.',
     attention:
       'Step through the sequence one picture at a time and ask S.P.A.N.S. what changed. Common steps: quarter turns, +1 dot, grow one size, one more side.',
     trap: 'Assuming the rule keeps going the same way when it bounces (clockwise, then anticlockwise).',
@@ -218,6 +260,7 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'nvr:odd_one_out': {
+    concept: 'The odd one out breaks exactly one rule that the other four figures share.',
     attention:
       'Test the four classic rules in order: symmetry, same shape family, same shading, same number of sides or dots. The odd figure breaks exactly one rule.',
     trap: 'Stopping at "they look similar" — the odd one often looks almost identical but fails a precise rule like even vs odd sides.',
@@ -228,6 +271,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'nvr:reflection_rotation': {
+    concept:
+      'Rotation turns a shape around a point and keeps left-to-right order; reflection mirrors it in a line so left becomes right.',
     attention:
       'Rotation turns around a point (the shape keeps left-right order); reflection mirrors it (left becomes right). Track a marked corner to tell them apart.',
     trap: 'Calling a half-turn a mirror — if the whole shape spins and no left-right flip happens, it is rotation.',
@@ -238,6 +283,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'nvr:cube_folding': {
+    concept:
+      'Every fold doubles the number of layers, so the number of holes is layers multiplied by punches — unless the punch lands on a crease or the folded corner.',
     attention:
       'Every fold doubles the number of layers, so one punch through two folds makes 2 × 2 = 4 holes — unless you punch on a fold line, where layers share the hole.',
     trap: 'Punching the folded corner is not 4 holes — that corner is the centre of the original sheet, so it is only 1 hole.',
@@ -248,6 +295,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'english:comprehension': {
+    concept:
+      'Every comprehension answer is proved by a line in the passage. Find the evidence line first, then choose the option that matches it.',
     attention:
       'Underline the key words in the question, then find the matching line in the passage. The answer is always proved by a quote, never by guesswork.',
     trap: 'Choosing an option that is true in real life but not stated (or implied) in the passage.',
@@ -258,6 +307,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'english:vocabulary': {
+    concept:
+      'A word’s meaning is the job it does in that sentence. Swap each option into the sentence and keep the one that still makes sense.',
     attention:
       'Read the whole sentence with the word in place, then substitute each option. The best answer keeps both the meaning and the tone of the sentence.',
     trap: 'Picking a synonym that fits the topic but not the sentence — "quiet" and "library" go together, but quiet does not mean library.',
@@ -268,6 +319,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'english:word_classes': {
+    concept:
+      'Nouns name things, verbs do things, adjectives describe nouns and adverbs add detail to how something happens. The job of the word decides its class.',
     attention:
       'Noun = person, place, thing or idea. Verb = action or being. Adjective describes a noun. Adverb supercharges a verb (often -ly). Preposition shows position/time (in, on, under). Pronoun replaces a noun (he, she, it, they).',
     trap: 'Calling every -ly word an adverb — friendly and lonely are adjectives!',
@@ -278,6 +331,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'english:spelling': {
+    concept:
+      'English spelling follows rules: double letters, soft c and g, and endings like -able and -ible. The sound of the word can hide the rules.',
     attention:
       'Hunt for the tricky part: double letters (accommodation, embarrassing), soft c/c (receive, calendar), and ending rules (-able vs -ible).',
     trap: 'Trusting how a word sounds — "definitely" sounds like "definately", but the correct spelling ends -itely.',
@@ -288,8 +343,10 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'english:punctuation': {
+    concept:
+      'Punctuation tells the reader where to pause, where a sentence stops and where a new one starts. Five marks do most of the work: full stop, capital letter, comma, apostrophe and speech marks.',
     attention:
-      'Check the five big marks: full stop, capital letter, apostrophe (possession or contraction), comma (lists and clauses), and inverted commas for speech.',
+      'Check the five big marks: full stop, capital letter, apostrophe (possession or contraction), comma (lists and clauses), inverted commas for speech.',
     trap: 'Apostrophes for plurals — "the dog’s bones" is possession, but "three dog’s" should be "three dogs".',
     steps: [
       'Read the sentence aloud and listen for pauses and ends.',
@@ -298,6 +355,8 @@ const TOPIC_STRATEGIES: Record<string, TopicStrategy> = {
     ],
   },
   'english:best_word': {
+    concept:
+      'The best word fits three things at once: the meaning, the grammar of the sentence and the tone. Read it twice — once for sense, once for sound.',
     attention:
       'The "best word" fits the meaning AND the register of the sentence. Read it twice: once for sense, once for sound.',
     trap: 'Choosing a word with the right meaning but wrong grammar — "The rain was heavy" works, but "The rain was strongly" does not.',

@@ -1,4 +1,4 @@
-import { CORE_SUBJECTS, type Question, type SessionMode, type Subject } from '../db/schemas'
+import { type Question, type SessionMode, type Subject } from '../db/schemas'
 
 export type ExamMode = Extract<SessionMode, 'mock_paper_1' | 'mock_paper_2' | 'mock_paper_3' | 'mini_mock'>
 
@@ -12,6 +12,8 @@ export interface ExamSectionConfig {
   questionCount: number
   /** Beacon-style papers ask for written answers typed into a box. */
   writtenMode?: boolean
+  /** For creative writing tasks with rubric */
+  creativeWriting?: boolean
 }
 
 export interface ExamConfig {
@@ -30,43 +32,43 @@ const MINUTE = 60
 export const EXAM_CONFIGS: Record<ExamMode, ExamConfig> = {
   mock_paper_1: {
     mode: 'mock_paper_1',
-    title: 'Adventure Paper (50 min)',
-    subtitle: 'Section A: English → Section B: Maths',
+    title: 'Paper 1: FSCE Adventure Paper (~45 min)',
+    subtitle: 'Section A: English Comprehension & Vocabulary (22 min) → Section B: KS2 Maths Fluency (23 min)',
     blurb:
-      'The G7 FSCE Adventure Paper: 25 minutes of English multiple choice, then a strict section lock, then 25 minutes of Maths multiple choice. Answers stay hidden until the very end.',
+      'The G7 FSCE Adventure Paper: Multiple choice focused on quick fluency. Section A (English Comprehension & Vocabulary), then a strict section lock, then Section B (KS2 Maths Fluency).',
     omrEligible: true,
     sections: [
       {
         id: 'A',
         title: 'Section A',
-        subjectLabel: 'English',
+        subjectLabel: 'English Comprehension & Vocabulary',
         subjects: ['english'],
-        timeSeconds: 25 * MINUTE,
+        timeSeconds: 22 * MINUTE,
         questionCount: 30,
       },
       {
         id: 'B',
         title: 'Section B',
-        subjectLabel: 'Maths',
+        subjectLabel: 'KS2 Maths Fluency',
         subjects: ['maths'],
-        timeSeconds: 25 * MINUTE,
+        timeSeconds: 23 * MINUTE,
         questionCount: 30,
       },
     ],
   },
   mock_paper_2: {
     mode: 'mock_paper_2',
-    title: 'Beacon Paper (50 min)',
-    subtitle: 'Section A: English written answers → Section B: Maths written answers',
+    title: 'Paper 2: FSCE Beacon Paper (~45 min - Written & Creative)',
+    subtitle: 'Section A: Written answers (25 min) → Section B: Creative Writing Task (20 min)',
     blurb:
-      'The G7 FSCE Beacon Paper: 25 minutes of English answers written in the boxes, a strict section lock, then 25 minutes of written Maths answers. Numbers and words must be typed before the answer is revealed.',
+      'The G7 FSCE Beacon Paper: Section A with written answers (type exact values/completions), strict section lock, then Section B Creative Writing Task with interactive rubric.',
     omrEligible: false,
     sections: [
       {
         id: 'A',
         title: 'Section A',
-        subjectLabel: 'English — written answers',
-        subjects: ['english'],
+        subjectLabel: 'English & Maths — written answers',
+        subjects: ['english', 'maths'],
         timeSeconds: 25 * MINUTE,
         questionCount: 20,
         writtenMode: true,
@@ -74,20 +76,21 @@ export const EXAM_CONFIGS: Record<ExamMode, ExamConfig> = {
       {
         id: 'B',
         title: 'Section B',
-        subjectLabel: 'Maths — written answers',
-        subjects: ['maths'],
-        timeSeconds: 25 * MINUTE,
-        questionCount: 20,
+        subjectLabel: 'Creative Writing Task',
+        subjects: ['english'],
+        timeSeconds: 20 * MINUTE,
+        questionCount: 1,
         writtenMode: true,
+        creativeWriting: true,
       },
     ],
   },
   mock_paper_3: {
     mode: 'mock_paper_3',
-    title: 'Compass Paper (30 min)',
+    title: 'Paper 3: FSCE Compass Paper (~40 min - Across the Curriculum)',
     subtitle: 'Section A: Across the Curriculum',
     blurb:
-      'The G7 FSCE Compass Paper: logical interpretation across 11 KS2 disciplines — science and experiments, history, geography, computing, arts, design, music and languages.',
+      'The G7 FSCE Compass Paper: Multiple choice interdisciplinary questions across Science, History, Geography, Computing, Arts, Music evaluating data interpretation and academic curiosity.',
     omrEligible: true,
     sections: [
       {
@@ -95,32 +98,32 @@ export const EXAM_CONFIGS: Record<ExamMode, ExamConfig> = {
         title: 'Section A',
         subjectLabel: 'Compass — Across the Curriculum',
         subjects: ['compass'],
-        timeSeconds: 30 * MINUTE,
+        timeSeconds: 40 * MINUTE,
         questionCount: 25,
       },
     ],
   },
   mini_mock: {
     mode: 'mini_mock',
-    title: 'Quick Mini-Mock (20 min)',
-    subtitle: 'Section A (10 min) + Section B (10 min) · 24 questions in total',
+    title: 'Mini-Mock FSCE (20 min)',
+    subtitle: 'Adventure + Compass mixed · 24 questions',
     blurb:
-      'A short two-section run for busy weekdays: 12 mixed questions, 10 minutes, then 12 more mixed questions with another 10 minutes on the clock.',
+      'A short FSCE-style run for busy weekdays: combining Adventure and Compass content for quick practice.',
     omrEligible: false,
     sections: [
       {
         id: 'A',
         title: 'Section A',
-        subjectLabel: 'Mixed — first half',
-        subjects: CORE_SUBJECTS,
+        subjectLabel: 'Mixed — Adventure style',
+        subjects: ['english', 'maths'],
         timeSeconds: 10 * MINUTE,
         questionCount: 12,
       },
       {
         id: 'B',
         title: 'Section B',
-        subjectLabel: 'Mixed — second half',
-        subjects: CORE_SUBJECTS,
+        subjectLabel: 'Mixed — Compass style',
+        subjects: ['compass'],
         timeSeconds: 10 * MINUTE,
         questionCount: 12,
       },

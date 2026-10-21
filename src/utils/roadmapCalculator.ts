@@ -1,5 +1,4 @@
 import type { Attempt, Session, Subject } from '../db/schemas'
-import { SUBJECTS } from '../db/schemas'
 import { startOfToday } from '../lib/format'
 
 export type RoadmapPhaseId = 'foundation' | 'speed' | 'stamina'
@@ -58,16 +57,24 @@ function phasePercent(goals: PhaseGoal[]): number {
 }
 
 export function currentPhaseForDate(now: number): RoadmapPhaseId {
-  const month = new Date(now).getMonth()
-  if (month >= 3 && month <= 5) return 'speed'
-  if (month >= 6 && month <= 8) return 'stamina'
-  return 'foundation'
+  const month = new Date(now).getMonth() // 0-11
+  // Phase 1 (Oct – Jan): months Oct(9), Nov(10), Dec(11), Jan(0)
+  if (month === 9 || month === 10 || month === 11 || month === 0) return 'foundation'
+  // Phase 2 (Feb – Apr): Feb(1), Mar(2), Apr(3)
+  if (month === 1 || month === 2 || month === 3) return 'speed'
+  // Phase 3 (May – Early July): May(4), Jun(5), Jul(6)
+  if (month === 4 || month === 5 || month === 6) return 'stamina'
+  // Aug onward fallback to stamina
+  return 'stamina'
 }
 
 export function computeRoadmap(input: RoadmapInput): RoadmapSnapshot {
   const { attempts, sessions, questionTimeTargets } = input
+  // Count all FSCE mock papers (Adventure, Beacon, Compass) and mini mocks
   const completedMocks = sessions.filter(
-    (session) => session.status === 'completed' && (session.mode === 'mock_paper_1' || session.mode === 'mock_paper_2'),
+    (session) =>
+      session.status === 'completed' &&
+      (session.mode === 'mock_paper_1' || session.mode === 'mock_paper_2' || session.mode === 'mock_paper_3'),
   )
   const completedMiniMocks = sessions.filter(
     (session) => session.status === 'completed' && session.mode === 'mini_mock',
@@ -76,8 +83,12 @@ export function computeRoadmap(input: RoadmapInput): RoadmapSnapshot {
   const correct = attempts.filter((attempt) => attempt.isCorrect).length
   const accuracy = totalAnswered === 0 ? 0 : Math.round((correct / totalAnswered) * 100)
 
-  const subjectsTouched = new Set(attempts.map((attempt) => attempt.subject))
-  const subjectsCovered = SUBJECTS.filter((subject) => subjectsTouched.has(subject as Subject)).length
+  // Only count coverage of english, maths, compass (required subjects) - exclude nvr, vr
+  const requiredSubjects = new Set<Subject>(['english', 'maths', 'compass'])
+  const subjectsTouched = new Set(
+    attempts.filter((attempt) => requiredSubjects.has(attempt.subject)).map((attempt) => attempt.subject),
+  )
+  const subjectsCovered = ['english', 'maths', 'compass'].filter((subject) => subjectsTouched.has(subject as Subject)).length
 
   const onTarget = attempts.filter((attempt) => {
     const target = questionTimeTargets.get(attempt.questionId)
@@ -114,11 +125,11 @@ export function computeRoadmap(input: RoadmapInput): RoadmapSnapshot {
       met: totalAnswered >= 500,
     },
     {
-      label: 'Subjects covered',
-      value: 4,
+      label: 'Core subjects covered (English/Maths/Compass)',
+      value: 3,
       unit: 'subjects',
       achieved: subjectsCovered,
-      met: subjectsCovered >= 4,
+      met: subjectsCovered >= 3,
     },
     {
       label: 'Accuracy',
@@ -138,7 +149,7 @@ export function computeRoadmap(input: RoadmapInput): RoadmapSnapshot {
       met: totalAnswered >= 1000,
     },
     {
-      label: 'Mini mocks',
+      label: 'Mini-Mocks / Beacon Written sessions',
       value: 6,
       unit: 'sessions',
       achieved: completedMiniMocks.length,
@@ -152,11 +163,11 @@ export function computeRoadmap(input: RoadmapInput): RoadmapSnapshot {
       met: clinicAttempts.length >= 50,
     },
     {
-      label: 'On-target pace',
-      value: 70,
+      label: 'Accuracy',
+      value: 75,
       unit: 'percent',
-      achieved: onTargetPacePercent,
-      met: onTargetPacePercent >= 70,
+      achieved: accuracy,
+      met: accuracy >= 75,
     },
   ]
 
@@ -169,11 +180,11 @@ export function computeRoadmap(input: RoadmapInput): RoadmapSnapshot {
       met: totalAnswered >= 1500,
     },
     {
-      label: 'Full mock papers',
-      value: 10,
+      label: 'Full FSCE Papers (Adventure/Beacon/Compass)',
+      value: 9,
       unit: 'sessions',
       achieved: completedMocks.length,
-      met: completedMocks.length >= 10,
+      met: completedMocks.length >= 9,
     },
     {
       label: 'Mock average',
@@ -187,9 +198,9 @@ export function computeRoadmap(input: RoadmapInput): RoadmapSnapshot {
   const phases: PhaseProgress[] = [
     {
       id: 'foundation',
-      title: 'Phase 1 — Foundation',
-      window: 'October to March',
-      headline: 'Build strong basics across every subject.',
+      title: 'Phase 1 — Core KS2 Mastery',
+      window: 'Oct – Jan',
+      headline: 'English, Maths & Compass mastery.',
       percent: phasePercent(foundationGoals),
       goals: foundationGoals,
       barSegments: foundationGoals.map((goal) => ({
@@ -199,9 +210,9 @@ export function computeRoadmap(input: RoadmapInput): RoadmapSnapshot {
     },
     {
       id: 'speed',
-      title: 'Phase 2 — Speed',
-      window: 'April to June',
-      headline: 'Answer accurately within the time target.',
+      title: 'Phase 2 — Beacon Written Precision & Speed',
+      window: 'Feb – Apr',
+      headline: '⚠️ Official G7 Registration Window: Feb – Mar!',
       percent: phasePercent(speedGoals),
       goals: speedGoals,
       barSegments: speedGoals.map((goal) => ({
@@ -211,9 +222,9 @@ export function computeRoadmap(input: RoadmapInput): RoadmapSnapshot {
     },
     {
       id: 'stamina',
-      title: 'Phase 3 — Stamina',
-      window: 'July to September',
-      headline: 'Hold focus through full mock papers.',
+      title: 'Phase 3 — Full FSCE 3-Paper Stamina',
+      window: 'May – Early July Exam',
+      headline: '≥75% Glos Qualifying / ≥85% Pate\'s & Stroud High Stretch',
       percent: phasePercent(staminaGoals),
       goals: staminaGoals,
       barSegments: staminaGoals.map((goal) => ({

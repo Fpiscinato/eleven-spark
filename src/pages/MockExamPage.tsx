@@ -9,6 +9,7 @@ import {
   Printer,
   Trophy,
   X,
+  Star,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MathText } from '../components/exam/MathText'
@@ -33,6 +34,7 @@ import {
   type ExamMode,
 } from '../lib/exam'
 import { formatClock, formatMinutes, uid } from '../lib/format'
+import { capTimeSpent } from '../lib/timing'
 import { isWrittenAnswerCorrect } from '../lib/writtenAnswer'
 import { abandonSession, completeSession, startSession } from '../lib/sessionHelpers'
 import {
@@ -46,10 +48,20 @@ import { useParentGate } from '../context/ParentGateContext'
 import { celebrateSpecial } from '../components/brand/SpecialDedicationModal'
 import { scheduleSync } from '../services/gistSync'
 import type { ScreenId } from '../types'
+import { WRITING_TASKS } from '../data/writingTasks'
 
 type Phase = 'intro' | 'running' | 'transition' | 'results'
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E']
+
+/** The five criteria the Beacon creative writing task is marked on. */
+const CREATIVE_RUBRIC = [
+  'Ideas & Creativity',
+  'Paragraphs & Structure',
+  'Ambitious Vocabulary',
+  'Grammar & Sentence Variety',
+  'Punctuation & Spelling',
+] as const
 
 const OMR_INSTRUCTIONS =
   'Use this tool to quickly input answers from your printed OMR paper sheet to instantly grade mock exams and update analytics.'
@@ -99,6 +111,10 @@ interface Engine {
   flags: Record<string, boolean>
   timeUsedBySection: number[]
   startedAt: number
+  creativeTaskId?: string
+  creativeText?: string
+  /** Self-marked rubric scores for the creative writing task (1 to 4). */
+  creativeScores?: Record<string, number>
 }
 
 interface EngineSnapshot {
@@ -164,8 +180,26 @@ async function loadSectionsForConfig(config: ExamConfig): Promise<{
   const sectionQuestions: Question[][] = []
   const passagesById = new Map<string, Passage>()
   for (const section of config.sections) {
+    // A creative writing section is a task, not a multiple choice question:
+    // it must never add a phantom "unanswered" question to the score.
+    if (section.creativeWriting === true) {
+      sectionQuestions.push([])
+      continue
+    }
     const loaded = await loadQuestionsForSubjects(section.subjects)
-    const chosen = pickBalancedQuestions(loaded.questions, section.questionCount, (question) =>
+    // A written-answers section must actually ask for written answers. The
+    // short_text questions are placed first inside every topic group, so each
+    // topic still contributes to the paper but the child types her answers
+    // instead of ticking A-E wherever the bank allows it.
+    const pool =
+      section.writtenMode === true
+        ? [...loaded.questions].sort((a, b) => {
+            const aWritten = a.answerType === 'short_text' ? 0 : 1
+            const bWritten = b.answerType === 'short_text' ? 0 : 1
+            return aWritten - bWritten
+          })
+        : loaded.questions
+    const chosen = pickBalancedQuestions(pool, section.questionCount, (question) =>
       question.topic ?? question.subject,
     )
     sectionQuestions.push(chosen)
@@ -564,19 +598,18 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
 
   useEffect(() => {
     void (async () => {
-      const [englishCount, , , mathsCount, compassCount, allCount] = await Promise.all([
+      const [englishCount, , , mathsCount, compassCount] = await Promise.all([
         db.questions.where('subject').equals('english').count(),
         db.questions.where('subject').equals('vr').count(),
         db.questions.where('subject').equals('nvr').count(),
         db.questions.where('subject').equals('maths').count(),
         db.questions.where('subject').equals('compass').count(),
-        db.questions.count(),
       ])
       const available: Record<ExamMode, number[]> = {
         mock_paper_1: [englishCount, mathsCount],
-        mock_paper_2: [englishCount, mathsCount],
+        mock_paper_2: [Math.min(englishCount, mathsCount), 1], // written answers + creative writing
         mock_paper_3: [compassCount],
-        mini_mock: [allCount, allCount],
+        mini_mock: [Math.min(englishCount, mathsCount), compassCount],
       }
       const counts: Record<ExamMode, number[]> = {
         mock_paper_1: [],
@@ -605,6 +638,8 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
       setReport(null)
       setFinishStep(0)
       setAlert(null)
+      const creativeTaskId =
+        mode === 'mock_paper_2' && WRITING_TASKS.length > 0 ? WRITING_TASKS[Math.floor(Math.random() * WRITING_TASKS.length)].id : undefined
       setEngine({
         sessionId,
         profileId: activeProfileId,
@@ -617,6 +652,8 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
         flags: {},
         timeUsedBySection: config.sections.map(() => 0),
         startedAt: Date.now(),
+        creativeTaskId,
+        creativeText: '',
       })
       setRemaining(config.sections[0].timeSeconds)
       setPhase('running')
@@ -655,7 +692,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
             writtenAnswer !== undefined
               ? isWrittenAnswerCorrect(question, writtenAnswer)
               : selectedIndex === question.correctIndex
-          const timeSeconds = Math.round(timeSpentRef.current[question.id] ?? 0)
+          const timeSeconds = capTimeSpent(Math.round(timeSpentRef.current[question.id] ?? 0))
           const flagged = finalEngine.flags[question.id] === true
           if (isCorrect) {
             correct += 1
@@ -680,6 +717,21 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
           })
         })
         const section = config.sections[sectionIndex]
+        if (section.creativeWriting === true) {
+          // The creative task is not auto-marked: it is reported with the
+          // number of words written instead of a fake "wrong answer".
+          const wordCount = (finalEngine.creativeText ?? '')
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean).length
+          breakdown.push({
+            section: `${section.title} — ${section.subjectLabel} (${wordCount} words written)`,
+            correct: 0,
+            total: 0,
+            timeSeconds: Math.round(timeUsedBySection[sectionIndex] ?? 0),
+          })
+          return
+        }
         breakdown.push({
           section: `${section.title} — ${section.subjectLabel}`,
           correct: sectionCorrect,
@@ -957,11 +1009,11 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
     return (
       <div className="flex flex-col gap-5">
         <ScreenHeader
-          title="Gloucestershire Official Mock Simulator"
-          subtitle="Real two-paper format with strict section lock, just like the big day."
+          title="FSCE Mock Simulator (Gloucestershire G7)"
+          subtitle="Adventure, Beacon & Compass with strict section lock, just like the big day."
         />
         <div className={`${cardClass} border-2 border-amber-200 bg-amber-50`}>
-          <p className="mb-2 text-sm font-black uppercase tracking-wide text-amber-900">Exam rules</p>
+          <p className="mb-2 text-sm font-black uppercase tracking-wide text-amber-900">FSCE Exam rules</p>
           <ul className="flex flex-col gap-1.5 text-sm font-bold text-amber-950">
             <li>Every question has 5 options: A, B, C, D and E.</li>
             <li>Each section has its own countdown. When it ends, you move on automatically.</li>
@@ -969,6 +1021,8 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
               <Lock className="mr-1 inline h-4 w-4" aria-hidden="true" />
               Once you finish Section A (or time runs out), it is locked forever — you cannot go back.
             </li>
+            <li>Beacon Paper: Section A written answers (type exact values/completions). Section B Creative Writing with rubric.</li>
+            <li>Compass Paper: Across the Curriculum — interpret data, graphs and texts.</li>
             <li>Answers are never shown during the mock. A discreet alert appears at 5 minutes and 1 minute left.</li>
             <li>Flag any question you want to double-check with "Flag for Review".</li>
           </ul>
@@ -1011,7 +1065,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
           <OmrInstructionsCard className="mt-4" />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-2">
           {EXAM_MODES.map((mode) => {
             const config = EXAM_CONFIGS[mode]
             const counts = introCounts ? introCounts[mode] : null
@@ -1035,12 +1089,12 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
                       className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-extrabold text-slate-600"
                     >
                       {section.title}: {section.subjectLabel} · {formatMinutes(section.timeSeconds)}
-                      {counts ? ` · ${counts[sectionIndex] ?? 0} questions` : ''}
+                      {counts ? ` · ${counts[sectionIndex] ?? 0} item${(counts[sectionIndex] ?? 0) === 1 ? '' : 's'}` : ''}
                     </li>
                   ))}
                 </ul>
                 <p className="text-sm font-bold text-slate-500">
-                  {total === null ? 'Counting questions...' : `${total} questions in this paper`}
+                  {total === null ? 'Counting questions...' : `${total} items in this paper`}
                 </p>
                 <button
                   type="button"
@@ -1048,11 +1102,20 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
                   disabled={total === 0 || total === null}
                   className={btnPrimaryClass}
                 >
-                  Start {config.title}
+                  Start {config.title.split(':')[0]}
                 </button>
               </div>
             )
           })}
+        </div>
+
+        <div className={`${cardClass} border-2 border-slate-200 bg-slate-50`}>
+          <details>
+            <summary className="cursor-pointer text-sm font-black text-slate-700">Optional Classic Logic Mock (NVR & VR - Not required for Glos)</summary>
+            <p className="mt-2 text-sm font-semibold text-slate-600">
+              Extra practice for logic skills only. Not part of Gloucestershire FSCE requirements.
+            </p>
+          </details>
         </div>
       </div>
     )
@@ -1327,11 +1390,13 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
   const sectionConfig = engine.config.sections[engine.sectionIndex]
   const sectionQuestionsList = engine.sectionQuestions[engine.sectionIndex] ?? []
   const question = sectionQuestionsList[engine.cursor]
-  if (!question) return null
-  const passage = question.passageId ? engine.passagesById.get(question.passageId) : undefined
-  const answeredCount = sectionQuestionsList.filter((item) => engine.answers[item.id] !== null).length
+  const passage = question?.passageId ? engine.passagesById.get(question.passageId) : undefined
+  const answeredCount = sectionQuestionsList.filter((item) => engine.answers[item.id] !== null && engine.answers[item.id] !== undefined && engine.answers[item.id] !== '').length
   const timerClass =
     remaining > 300 ? 'text-slate-800' : remaining > 60 ? 'text-amber-600' : 'animate-pulse text-rose-600'
+  const isCreativeWriting = sectionConfig.creativeWriting === true || (engine.config.mode === 'mock_paper_2' && engine.sectionIndex === 1)
+  const creativeTask = isCreativeWriting && engine.creativeTaskId ? WRITING_TASKS.find((t) => t.id === engine.creativeTaskId) ?? WRITING_TASKS[0] : WRITING_TASKS[0]
+  const rubricComplete = CREATIVE_RUBRIC.every((criterion) => (engine.creativeScores?.[criterion] ?? 0) > 0)
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-4">
@@ -1378,10 +1443,11 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
         </p>
       </div>
 
+      {!isCreativeWriting && sectionQuestionsList.length > 0 && question ? (
       <div className={`${cardClass} flex flex-wrap items-center justify-between gap-3`}>
         <div className="flex flex-wrap gap-1.5" aria-label="Question navigator">
           {sectionQuestionsList.map((item, index) => {
-            const answered = engine.answers[item.id] !== null
+            const answered = engine.answers[item.id] !== null && engine.answers[item.id] !== undefined && engine.answers[item.id] !== ''
             const flagged = engine.flags[item.id] === true
             const current = index === engine.cursor
             return (
@@ -1423,7 +1489,101 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
           </button>
         </div>
       </div>
+      ) : null}
 
+      {isCreativeWriting ? (
+        <div className={`${cardClass} flex flex-col gap-4`}>
+          <div className="flex items-center gap-3">
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-100 text-amber-700">
+              <Star className="h-6 w-6" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="text-lg font-black text-slate-900">Beacon Paper — Creative Writing Task</p>
+              <p className="text-sm font-bold text-slate-500">Write your story/piece for this task</p>
+            </div>
+          </div>
+          <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-black uppercase tracking-wide text-amber-800">{creativeTask.title}</p>
+            <p className="mt-1 text-base font-semibold leading-relaxed text-slate-800">{creativeTask.prompt}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className={`${btnSecondaryClass} w-fit`}
+          >
+            <Printer className="mr-2 h-5 w-5" aria-hidden="true" />
+            🖨️ Print FSCE Lined Writing Sheet
+          </button>
+          <textarea
+            value={engine.creativeText ?? ''}
+            onChange={(e) => setEngine((current) => (current ? { ...current, creativeText: e.target.value } : current))}
+            rows={14}
+            placeholder="Start writing your creative piece here..."
+            className="w-full rounded-2xl border-2 border-slate-300 bg-white p-4 text-lg font-semibold leading-relaxed text-slate-900 focus:border-indigo-500 focus:outline-none"
+          />
+          <div className="flex items-center justify-between">
+            <span className="rounded-full bg-slate-100 px-3 py-1.5 text-sm font-extrabold text-slate-600">
+              {(engine.creativeText ?? '').trim().split(/\s+/).filter(Boolean).length} words
+            </span>
+            <button type="button" onClick={() => setFinishStep(1)} className={btnPrimaryClass}>
+              Finish Section B & Finish Paper
+            </button>
+          </div>
+          <div className={`${cardClass} border-2 border-indigo-200 bg-indigo-50`}>
+            <p className="mb-2 text-sm font-black uppercase tracking-wide text-indigo-900">
+              Interactive rubric — 5 criteria (1 to 4 marks each)
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {CREATIVE_RUBRIC.map((criterion) => {
+                const selected = engine.creativeScores?.[criterion] ?? null
+                return (
+                  <div
+                    key={criterion}
+                    className="flex items-center justify-between gap-2 rounded-xl bg-white px-3 py-2"
+                  >
+                    <span className="text-sm font-bold text-slate-700">{criterion}</span>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() =>
+                            setEngine((current) =>
+                              current
+                                ? {
+                                    ...current,
+                                    creativeScores: {
+                                      ...(current.creativeScores ?? {}),
+                                      [criterion]: n,
+                                    },
+                                  }
+                                : current,
+                            )
+                          }
+                          aria-pressed={selected === n}
+                          aria-label={`${criterion}: ${n} mark${n === 1 ? '' : 's'}`}
+                          className={`grid h-7 w-7 place-items-center rounded-lg border text-xs font-extrabold transition ${
+                            selected === n
+                              ? 'border-indigo-600 bg-indigo-600 text-white'
+                              : 'border-slate-200 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50'
+                          }`}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <p className="mt-2 text-xs font-bold text-indigo-700">
+              {rubricComplete
+                ? 'Rubric complete — well done. Now read your writing one last time before you hand it in.'
+                : 'Score together after writing — aim for strong ideas and clear structure.'}
+            </p>
+          </div>
+        </div>
+      ) : question ? (
       <QuestionView
         key={question.id}
         question={question}
@@ -1440,7 +1600,9 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
         onWriteAnswer={(value) => submitWrittenAnswer(value)}
         onWrittenChange={(value) => submitWrittenAnswer(value)}
       />
+      ) : null}
 
+      {!isCreativeWriting && sectionQuestionsList.length > 0 && question ? (
       <div className="flex justify-between gap-3">
         <button
           type="button"
@@ -1468,6 +1630,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
           </button>
         )}
       </div>
+      ) : null}
 
       {cancelStep > 0 ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4">

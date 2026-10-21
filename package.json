@@ -13,7 +13,11 @@
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "deploy:preview": "npm run build && wrangler versions upload",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "audit:safety": "tsx scripts/audit-safety.ts",
+    "audit:maths": "tsx scripts/audit-maths.ts",
+    "audit:content": "tsx scripts/audit-content.ts 3",
+    "audit": "npm run audit:safety && npm run audit:maths && npm run audit:content"
   },
   "dependencies": {
     "dexie": "^4.4.6",

@@ -170,7 +170,11 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           icon={Timer}
           label="Average time"
           value={formatClock(stats.avgTimeSeconds)}
-          hint="Per question"
+          hint={
+            stats.medianTimeSeconds > 0
+              ? `Per question · typical ${formatClock(stats.medianTimeSeconds)}`
+              : 'Per question'
+          }
           accentClass="bg-sky-100 text-sky-700"
         />
       </div>

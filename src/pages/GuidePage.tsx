@@ -132,7 +132,8 @@ export function GuidePage({ onNavigate }: GuidePageProps) {
           >
             <p>• Read the whole question twice before looking at the options.</p>
             <p>• In maths, check the sign and the units — that is where easy marks are lost.</p>
-            <p>• On the Compass Paper, read every table, chart and diagram before you answer.</p>
+            <p>• On the Compass Paper, read every table, chart and diagram before you answer — it's about interpretation.</p>
+            <p>• On Beacon Paper, show your reasoning clearly and craft your Creative Writing with paragraphs and ambitious vocabulary.</p>
             <p>• Never leave a question empty: there is no negative marking.</p>
             <p>• If you are stuck, flag it, pick your best guess, and come back if there is time.</p>
           </SectionCard>
@@ -155,24 +156,30 @@ export function GuidePage({ onNavigate }: GuidePageProps) {
           >
             <p>
               The entrance test for Gloucestershire grammar schools (Pate's, Stroud High, Ribston Hall,
-              Denmark Road and The Crypt) is the G7 FSCE — three papers of about 50 minutes each.
+              Denmark Road and The Crypt) is the <strong>G7 FSCE (Future Stories Community Enterprise)</strong> — three papers.
             </p>
             <p>
-              <strong>Adventure Paper:</strong> Section A — English comprehension, spelling, punctuation
-              and best word; Section B — KS2 Maths. Both sections are multiple choice with five options.
+              <strong>Paper 1: Adventure Paper (~45 min):</strong> Multiple choice focused on quick fluency.
+              Section A — English Comprehension &amp; Vocabulary (22 min), then a strict section lock.
+              Section B — KS2 Maths Fluency (23 min).
             </p>
             <p>
-              <strong>Beacon Paper:</strong> written answers in the boxes — Section A English, Section B
-              Maths. Numbers and words are typed in before the answer is revealed.
+              <strong>Paper 2: Beacon Paper (~45 min - Written &amp; Creative):</strong> Section A (25 min)
+              has written answers — type the exact value for maths or complete the word for English in the boxes
+              (no guessing options). Then Section B (20 min) is the <strong>Creative Writing Task</strong> —
+              continue a story, describe a discovery, or write a persuasive/argumentative piece. Print the
+              FSCE lined writing sheet to write by hand or type on screen. After finishing, use the{' '}
+              <strong>interactive rubric</strong> (Ideas/Creativity, Paragraphs/Structure, Ambitious Vocabulary,
+              Grammar/Sentences, Punctuation/Spelling) scored 1-4 to self-assess.
             </p>
             <p>
-              <strong>Compass Paper:</strong> Across the Curriculum — logical interpretation that pulls
-              together science, history, geography, computing, arts, design, music and languages.
+              <strong>Paper 3: Compass Paper (~40 min):</strong> Multiple choice Across the Curriculum —
+              logical interpretation across Science &amp; Experiments, History &amp; Geography, Computing &amp; Logic,
+              Arts, Design, Music &amp; Languages. Read graphs, tables and texts calmly; no need to memorise everything.
             </p>
             <p>
-              Sections are strictly timed and locked: finishing Section A (or running out of time) moves
-              the student to Section B with no way back. ElevenSpark reproduces this rule so the format
-              feels familiar on the day.
+              <strong>Important dates:</strong> Registrations between <strong>February and March of Year 5</strong>,
+              and the test in <strong>early July of Year 5</strong>. Sections are strictly timed and locked.
             </p>
           </SectionCard>
 

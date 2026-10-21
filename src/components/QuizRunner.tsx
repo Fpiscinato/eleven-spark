@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { db } from '../db/database'
 import type { Passage, Question, SectionBreakdownEntry, SessionMode, Subject } from '../db/schemas'
 import { formatClock, uid } from '../lib/format'
+import { capTimeSpent } from '../lib/timing'
 import { SUBJECT_META } from '../lib/theme'
 import { MathText } from './exam/MathText'
 import { QuestionView } from './exam/QuestionView'
@@ -59,6 +60,7 @@ export function QuizRunner({
   const shownAtRef = useRef(0)
   const timesRef = useRef<Record<string, number>>({})
   const startedAtRef = useRef(0)
+  const endedAtRef = useRef<number | null>(null)
   const finishedRef = useRef(false)
   const selectingIndexRef = useRef(-1)
 
@@ -67,6 +69,8 @@ export function QuizRunner({
     startedAtRef.current = startedAt
     shownAtRef.current = startedAt
     const timer = window.setInterval(() => {
+      // The clock is frozen once the very last question has been answered.
+      if (endedAtRef.current !== null) return
       setElapsed(Math.round((Date.now() - startedAt) / 1000))
     }, 1000)
     return () => window.clearInterval(timer)
@@ -76,9 +80,17 @@ export function QuizRunner({
   const passage = question.passageId ? passagesById.get(question.passageId) : undefined
   const isAnswered = locked[index] === true
 
+  /** Freezes the exam clock as soon as the very last question is answered. */
+  const stopTimers = useCallback(() => {
+    if (endedAtRef.current !== null) return
+    endedAtRef.current = Date.now()
+    setElapsed(Math.max(0, Math.round((endedAtRef.current - startedAtRef.current) / 1000)))
+  }, [])
+
   const finalize = useCallback(async () => {
     if (finishedRef.current) return
     finishedRef.current = true
+    stopTimers()
     const answered = questions
       .map((questionItem, questionIndex) => ({ questionItem, selection: selections[questionIndex] }))
       .filter((entry): entry is { questionItem: Question; selection: number } => entry.selection !== null)
@@ -99,7 +111,8 @@ export function QuizRunner({
       total: bucket.total,
       timeSeconds: Math.round(bucket.timeSeconds),
     }))
-    const timeSeconds = Math.round((Date.now() - startedAtRef.current) / 1000)
+    const endedAt = endedAtRef.current ?? Date.now()
+    const timeSeconds = Math.max(0, Math.round((endedAt - startedAtRef.current) / 1000))
     const scorePercentage = total === 0 ? 0 : Math.round((correct / total) * 100)
     await db.sessions.update(sessionId, {
       status: 'completed',
@@ -127,7 +140,8 @@ export function QuizRunner({
         if (selectingIndexRef.current === index) selectingIndexRef.current = -1
       }, 250)
       const now = Date.now()
-      const timeSpentSeconds = Math.max(0, Math.round((now - shownAtRef.current) / 1000))
+      const rawSeconds = Math.max(0, Math.round((now - shownAtRef.current) / 1000))
+      const timeSpentSeconds = capTimeSpent(rawSeconds)
       const isCorrect = optionIndex === question.correctIndex
       timesRef.current[question.id] = (timesRef.current[question.id] ?? 0) + timeSpentSeconds
       setSelections((previous) => {
@@ -160,8 +174,9 @@ export function QuizRunner({
           timestamp: now,
         })
         .catch(() => undefined)
+      if (index >= questions.length - 1) stopTimers()
     },
-    [isAnswered, question, sessionId, profileId, index],
+    [isAnswered, question, sessionId, profileId, index, questions.length, stopTimers],
   )
 
   const goNext = useCallback(() => {

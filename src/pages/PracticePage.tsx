@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  Brain,
   Check,
   Lightbulb,
   Medal,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BeaconWritingPanel } from '../components/exam/BeaconWritingPanel'
+import { LearnHowToSolve, QuickExplanation } from '../components/exam/AnswerHelp'
 import { QuestionView } from '../components/exam/QuestionView'
 import { MathText } from '../components/exam/MathText'
 import {
@@ -37,6 +39,7 @@ import {
 } from '../db/schemas'
 import { formatClock, uid } from '../lib/format'
 import { getAllAttempts } from '../lib/stats'
+import { averageSeconds, capTimeSpent } from '../lib/timing'
 import { SUBJECT_META } from '../lib/theme'
 import { startSession } from '../lib/sessionHelpers'
 import { isWrittenAnswerCorrect } from '../lib/writtenAnswer'
@@ -123,9 +126,12 @@ interface SessionSummary {
   answered: number
   totalQuestions: number
   timeSeconds: number
+  avgTimeSeconds: number
   breakdown: SectionBreakdownEntry[]
   wrongQuestions: Question[]
 }
+
+type HelpView = 'none' | 'quick' | 'tutorial'
 
 interface PracticeRunnerProps {
   run: RunState
@@ -140,9 +146,12 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
     run.questions.map(() => null),
   )
   const [paceMessage, setPaceMessage] = useState<{ correct: boolean; text: string } | null>(null)
+  const [helpView, setHelpView] = useState<HelpView>('none')
   const [elapsed, setElapsed] = useState(0)
+  const [timerRunning, setTimerRunning] = useState(true)
   const shownAtRef = useRef(0)
   const startedAtRef = useRef(0)
+  const endedAtRef = useRef<number | null>(null)
   const finishedRef = useRef(false)
   const progressKey = `${SESSION_KEYS.practiceProgress}${run.sessionId}`
 
@@ -156,13 +165,18 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
       setPending(saved.pending)
       setOutcomes(saved.outcomes)
     }
-    const timer = window.setInterval(() => {
-      setElapsed(Math.round((Date.now() - startedAt) / 1000))
-    }, 1000)
-    return () => window.clearInterval(timer)
+    setElapsed(Math.max(0, Math.round((Date.now() - startedAt) / 1000)))
     // The saved progress is only read once, when the runner opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!timerRunning) return
+    const timer = window.setInterval(() => {
+      setElapsed(Math.max(0, Math.round((Date.now() - startedAtRef.current) / 1000)))
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [timerRunning])
 
   useEffect(() => {
     writeSession(progressKey, {
@@ -179,9 +193,22 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
   const isConfirmed = outcome !== null
   const isLast = index >= run.questions.length - 1
 
+  /**
+   * Stops the session clock. This is called the moment the very last question
+   * is answered, so the timers are finalised without waiting for the
+   * "finish" button to be pressed.
+   */
+  const stopTimers = useCallback(() => {
+    if (endedAtRef.current !== null) return
+    endedAtRef.current = Date.now()
+    setTimerRunning(false)
+    setElapsed(Math.max(0, Math.round((endedAtRef.current - startedAtRef.current) / 1000)))
+  }, [])
+
   const finalize = useCallback(() => {
     if (finishedRef.current) return
     finishedRef.current = true
+    stopTimers()
     removeSession(`${SESSION_KEYS.practiceProgress}${run.sessionId}`)
     const answered = outcomes.filter((entry): entry is Outcome => entry !== null)
     const correct = answered.filter((entry) => entry.isCorrect).length
@@ -206,7 +233,9 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
       const entry = outcomes[questionIndex]
       return entry !== null && !entry.isCorrect
     })
-    const timeSeconds = Math.round((Date.now() - startedAtRef.current) / 1000)
+    const endedAt = endedAtRef.current ?? Date.now()
+    const timeSeconds = Math.max(0, Math.round((endedAt - startedAtRef.current) / 1000))
+    const avgTimeSeconds = averageSeconds(answered.map((entry) => entry.timeSeconds))
     const scorePercentage = total === 0 ? 0 : Math.round((correct / total) * 100)
     void db.sessions
       .update(run.sessionId, {
@@ -224,11 +253,12 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
           answered: total,
           totalQuestions: run.questions.length,
           timeSeconds,
+          avgTimeSeconds,
           breakdown,
           wrongQuestions,
         })
       })
-  }, [outcomes, run, onFinished])
+  }, [outcomes, run, onFinished, stopTimers])
 
   const isWrittenQuestion = run.writtenMode && question.answerType === 'short_text'
 
@@ -237,7 +267,8 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
       if (isConfirmed || finishedRef.current) return
       const trimmed = value.trim()
       if (trimmed === '') return
-      const timeSeconds = Math.max(0, Math.round((Date.now() - shownAtRef.current) / 1000))
+      const rawSeconds = Math.max(0, Math.round((Date.now() - shownAtRef.current) / 1000))
+      const timeSeconds = capTimeSpent(rawSeconds)
       const isCorrect = isWrittenAnswerCorrect(question, trimmed)
       const target = question.timeTargetSeconds
       void db.attempts.add({
@@ -260,6 +291,7 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
         next[index] = { selectedIndex: null, isCorrect, timeSeconds, writtenAnswer: trimmed }
         return next
       })
+      setHelpView(isCorrect ? 'none' : 'quick')
       if (isCorrect && timeSeconds <= target) {
         setPaceMessage({ correct: true, text: `Great pace! ${timeSeconds}s / target ${target}s` })
       } else if (isCorrect) {
@@ -273,13 +305,15 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
           text: 'Not quite — check the correct answer below, then have another go next time.',
         })
       }
+      if (index >= run.questions.length - 1) stopTimers()
     },
-    [isConfirmed, question, index, run.sessionId, profileId],
+    [isConfirmed, question, index, run.sessionId, run.questions.length, profileId, stopTimers],
   )
 
   const handleConfirm = useCallback(() => {
     if (pending === null || isConfirmed || finishedRef.current) return
-    const timeSeconds = Math.max(0, Math.round((Date.now() - shownAtRef.current) / 1000))
+    const rawSeconds = Math.max(0, Math.round((Date.now() - shownAtRef.current) / 1000))
+    const timeSeconds = capTimeSpent(rawSeconds)
     const isCorrect = pending === question.correctIndex
     const target = question.timeTargetSeconds
     const letter = ['A', 'B', 'C', 'D', 'E'][pending]
@@ -302,6 +336,7 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
       next[index] = { selectedIndex: pending, isCorrect, timeSeconds }
       return next
     })
+    setHelpView(isCorrect ? 'none' : 'quick')
     if (isCorrect && timeSeconds <= target) {
       setPaceMessage({ correct: true, text: `Great pace! ${timeSeconds}s / target ${target}s` })
     } else if (isCorrect) {
@@ -315,7 +350,8 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
         text: `Not quite — the correct answer is ${letter}. Have a look at the explanation below.`,
       })
     }
-  }, [pending, isConfirmed, question, index, run.sessionId, profileId])
+    if (index >= run.questions.length - 1) stopTimers()
+  }, [pending, isConfirmed, question, index, run.sessionId, run.questions.length, profileId, stopTimers])
 
   const goNext = useCallback(() => {
     if (isLast) {
@@ -325,119 +361,148 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
     setIndex((current) => current + 1)
     setPending(null)
     setPaceMessage(null)
+    setHelpView('none')
     shownAtRef.current = Date.now()
   }, [isLast, finalize])
 
   const answeredCount = outcomes.filter((entry) => entry !== null).length
-  const correctLetter = ['A', 'B', 'C', 'D', 'E'][question.correctIndex]
+  const subjectMeta = SUBJECT_META[question.subject]
+  const progressPercent = ((index + 1) / run.questions.length) * 100
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-4">
-      <div className={`${cardClass} flex flex-wrap items-center justify-between gap-3`}>
-        <div className="flex items-center gap-3">
-          <div className="h-3 w-40 overflow-hidden rounded-full bg-slate-100 md:w-56">
+    <div className="mx-auto flex max-w-4xl flex-col gap-3 md:h-[calc(100dvh-133px)] md:min-h-0 md:overflow-hidden">
+      <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+        <div className="flex min-w-[140px] flex-1 items-center gap-2">
+          <div className="h-3 flex-1 overflow-hidden rounded-full bg-slate-100">
             <div
               className="h-full rounded-full bg-indigo-600 transition-all"
-              style={{ width: `${((index + 1) / run.questions.length) * 100}%` }}
+              style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <span className="text-sm font-extrabold text-slate-600">
-            {index + 1} / {run.questions.length}
+          <span className="text-sm font-extrabold text-slate-600 tabular-nums">
+            {index + 1}/{run.questions.length}
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-bold text-slate-500 tabular-nums">{formatClock(elapsed)}</span>
-          <button
-            type="button"
-            onClick={finalize}
-            className={`${btnSecondaryClass} min-h-[44px] px-4 py-2 text-sm`}
-          >
-            <Square className="h-4 w-4" aria-hidden="true" />
-            Stop & save
-          </button>
-        </div>
-      </div>
-
-      <QuestionView
-        key={question.id}
-        question={question}
-        passage={passage}
-        questionNumber={index + 1}
-        totalQuestions={run.questions.length}
-        selectedIndex={isConfirmed ? outcome.selectedIndex : pending}
-        onSelect={(optionIndex) => {
-          if (!isConfirmed) setPending(optionIndex)
-        }}
-        locked={isConfirmed}
-        showFeedback={isConfirmed}
-        writtenMode={run.writtenMode}
-        onWriteAnswer={(value) => handleWriteConfirm(value)}
-      />
-
-      {isConfirmed && paceMessage ? (
-        <div
-          className={`rounded-2xl border-2 px-4 py-3 text-base font-extrabold ${
-            paceMessage.correct
-              ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-              : 'border-rose-300 bg-rose-50 text-rose-800'
-          }`}
-          role="status"
+        <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${subjectMeta.badgeClass}`}>
+          {subjectMeta.label}
+        </span>
+        <span
+          className="rounded-full bg-slate-100 px-3 py-1 text-sm font-black text-slate-600 tabular-nums"
+          role="timer"
+          aria-label={`Time used ${formatClock(elapsed)}`}
         >
-          <span className="flex items-center gap-2">
-            {paceMessage.correct ? (
-              <Check className="h-5 w-5 shrink-0" aria-hidden="true" />
-            ) : (
-              <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden="true" />
-            )}
-            <MathText text={paceMessage.text} />
-          </span>
-        </div>
-      ) : null}
-
-      {isConfirmed ? (
-        <div className={`${cardClass} flex gap-3`}>
-          <div className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700">
-            <Lightbulb className="h-5 w-5" aria-hidden="true" />
-          </div>
-          <div>
-            <p className="mb-1 text-sm font-black uppercase tracking-wide text-slate-500">Explanation</p>
-            <p className="text-base font-semibold leading-relaxed text-slate-800">
-              <MathText text={question.explanation} />
-            </p>
-            {!outcome.isCorrect ? (
-              <p className="mt-2 text-sm font-extrabold text-emerald-700">
-                {isWrittenQuestion
-                  ? `Correct answer: ${question.options[question.correctIndex]}`
-                  : `Correct answer: ${correctLetter} — ${question.options[question.correctIndex]}`}
-              </p>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-
-      {isConfirmed ? (
-        <button type="button" onClick={goNext} className={btnPrimaryClass}>
-          {isLast ? 'See my results' : 'Next question'}
-        </button>
-      ) : isWrittenQuestion ? (
-        <p className="text-center text-sm font-bold text-slate-400">
-          Type your answer in the box above, then press &quot;Check my answer&quot;.
-        </p>
-      ) : (
+          {formatClock(elapsed)}
+        </span>
         <button
           type="button"
-          onClick={handleConfirm}
-          disabled={pending === null}
-          className={btnPrimaryClass}
+          onClick={finalize}
+          className={`${btnSecondaryClass} min-h-[40px] px-3 py-1.5 text-xs`}
         >
-          <Check className="h-5 w-5" aria-hidden="true" />
-          Confirm Answer
+          <Square className="h-4 w-4" aria-hidden="true" />
+          Stop &amp; save
         </button>
-      )}
+      </header>
 
-      <p className="text-center text-sm font-bold text-slate-400">
-        {answeredCount} of {run.questions.length} answered · take your time and read every option.
-      </p>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain md:pr-1">
+        <QuestionView
+          key={question.id}
+          question={question}
+          passage={passage}
+          compact
+          questionNumber={index + 1}
+          totalQuestions={run.questions.length}
+          selectedIndex={isConfirmed ? outcome.selectedIndex : pending}
+          onSelect={(optionIndex) => {
+            if (!isConfirmed) setPending(optionIndex)
+          }}
+          locked={isConfirmed}
+          showFeedback={isConfirmed}
+          writtenMode={run.writtenMode}
+          onWriteAnswer={(value) => handleWriteConfirm(value)}
+        />
+
+        {isConfirmed && paceMessage ? (
+          <div
+            className={`rounded-2xl border-2 px-4 py-3 text-base font-extrabold ${
+              paceMessage.correct
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                : 'border-rose-300 bg-rose-50 text-rose-800'
+            }`}
+            role="status"
+          >
+            <span className="flex items-center gap-2">
+              {paceMessage.correct ? (
+                <Check className="h-5 w-5 shrink-0" aria-hidden="true" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden="true" />
+              )}
+              <MathText text={paceMessage.text} />
+            </span>
+          </div>
+        ) : null}
+
+        {isConfirmed ? (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setHelpView((view) => (view === 'quick' ? 'none' : 'quick'))}
+                aria-pressed={helpView === 'quick'}
+                className={`inline-flex min-h-[48px] items-center gap-2 rounded-2xl border-2 px-4 py-2 text-sm font-extrabold transition ${
+                  helpView === 'quick'
+                    ? 'border-amber-500 bg-amber-500 text-white'
+                    : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
+                }`}
+              >
+                <Lightbulb className="h-5 w-5" aria-hidden="true" />
+                💡 Quick Explanation
+              </button>
+              <button
+                type="button"
+                onClick={() => setHelpView((view) => (view === 'tutorial' ? 'none' : 'tutorial'))}
+                aria-pressed={helpView === 'tutorial'}
+                className={`inline-flex min-h-[48px] items-center gap-2 rounded-2xl border-2 px-4 py-2 text-sm font-extrabold transition ${
+                  helpView === 'tutorial'
+                    ? 'border-indigo-600 bg-indigo-600 text-white'
+                    : 'border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
+                }`}
+              >
+                <Brain className="h-5 w-5" aria-hidden="true" />
+                🧠 Learn How to Solve (Tutorial)
+              </button>
+            </div>
+            {helpView === 'quick' ? (
+              <QuickExplanation question={question} writtenMode={isWrittenQuestion} />
+            ) : null}
+            {helpView === 'tutorial' ? <LearnHowToSolve question={question} /> : null}
+          </div>
+        ) : null}
+      </div>
+
+      <footer className="sticky bottom-16 z-20 -mx-4 shrink-0 border-t-2 border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:rounded-2xl md:border-2 md:border-slate-200 md:shadow-sm">
+        {isConfirmed ? (
+          <button type="button" onClick={goNext} className={`${btnPrimaryClass} w-full`}>
+            {isLast ? 'See my results' : 'Next question'}
+          </button>
+        ) : isWrittenQuestion ? (
+          <p className="text-center text-sm font-bold text-slate-400">
+            Type your answer in the box above, then press &quot;Check my answer&quot;.
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={pending === null}
+            className={`${btnPrimaryClass} w-full`}
+          >
+            <Check className="h-5 w-5" aria-hidden="true" />
+            Confirm Answer
+          </button>
+        )}
+        <p className="mt-2 text-center text-xs font-bold text-slate-400">
+          {answeredCount} of {run.questions.length} answered · take your time and read every option.
+        </p>
+      </footer>
     </div>
   )
 }
@@ -482,6 +547,9 @@ export function PracticePage({ params, onNavigate }: PracticePageProps) {
   const [clinicIds, setClinicIds] = useState<Set<string>>(new Set())
   const [run, setRun] = useState<RunState | null>(null)
   const [summary, setSummary] = useState<SessionSummary | null>(null)
+  const [beaconDone, setBeaconDone] = useState(false)
+  const [beaconResetKey, setBeaconResetKey] = useState(0)
+  const practiceSetupRef = useRef<HTMLDivElement>(null)
   const lastSeenRef = useRef<Map<string, Attempt>>(new Map())
 
   const refreshBank = useCallback(async () => {
@@ -623,7 +691,7 @@ export function PracticePage({ params, onNavigate }: PracticePageProps) {
     if (summary) {
       const percent = summary.answered === 0 ? 0 : Math.round((summary.correct / summary.answered) * 100)
       const medal = medalTier(percent, summary.answered)
-      const avgTime = summary.answered === 0 ? 0 : Math.round(summary.timeSeconds / summary.answered)
+      const avgTime = summary.avgTimeSeconds
       return (
         <div className="mx-auto flex max-w-2xl flex-col gap-5">
           <ScreenHeader
@@ -775,10 +843,43 @@ export function PracticePage({ params, onNavigate }: PracticePageProps) {
         </div>
       </button>
 
-      <BeaconWritingPanel />
+      <BeaconWritingPanel
+        resetKey={beaconResetKey}
+        onSubmitted={() => {
+          setBeaconDone(true)
+          // The child is taken straight back to the practice setup so she can
+          // start a new set without hunting for the button.
+          window.setTimeout(() => {
+            practiceSetupRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }, 60)
+        }}
+      />
+      {beaconDone ? (
+        <div
+          className="flex flex-wrap items-center gap-3 rounded-2xl border-2 border-emerald-300 bg-emerald-50 px-4 py-3"
+          role="status"
+        >
+          <p className="text-sm font-extrabold text-emerald-800">
+            Your Beacon writing is submitted and saved. Choose a subject below to start a practice
+            set.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setBeaconDone(false)
+              setBeaconResetKey((value) => value + 1)
+            }}
+            className={`${btnSecondaryClass} ml-auto min-h-[44px] px-3 py-1.5 text-xs`}
+          >
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            Write another piece
+          </button>
+        </div>
+      ) : null}
 
-      <section className={cardClass}>
-        <h2 className="mb-1 text-base font-black text-slate-900">Subject</h2>
+      <div ref={practiceSetupRef} className="scroll-mt-24">
+        <section className={cardClass}>
+          <h2 className="mb-1 text-base font-black text-slate-900">Subject</h2>
         <p className="mb-3 text-sm font-bold text-slate-500">
           Core Gloucestershire FSCE subjects — these are the ones on the exam papers.
         </p>
@@ -935,6 +1036,7 @@ export function PracticePage({ params, onNavigate }: PracticePageProps) {
         <Sparkles className="h-5 w-5" aria-hidden="true" />
         ⚡ Generate Fresh Practice Questions
       </button>
+      </div>
     </div>
   )
 }

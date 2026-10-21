@@ -101,12 +101,20 @@ interface OptionsListProps {
   onSelect: (index: number) => void
   disabled: boolean
   showFeedback: boolean
+  compact?: boolean
 }
 
-function OptionsList({ question, selectedIndex, onSelect, disabled, showFeedback }: OptionsListProps) {
+function OptionsList({
+  question,
+  selectedIndex,
+  onSelect,
+  disabled,
+  showFeedback,
+  compact = false,
+}: OptionsListProps) {
   const optionFigures = question.svgConfig?.optionFigures
   return (
-    <div className="grid gap-3">
+    <div className={compact ? 'grid gap-2' : 'grid gap-3'}>
       {question.options.map((option, index) => {
         const letter = OPTION_LETTERS[index]
         const isSelected = selectedIndex === index
@@ -144,10 +152,14 @@ function OptionsList({ question, selectedIndex, onSelect, disabled, showFeedback
             type="button"
             disabled={disabled}
             onClick={() => onSelect(index)}
-            className={`flex min-h-[64px] w-full items-center gap-4 rounded-2xl border-2 px-4 py-3 text-left transition active:scale-[0.99] disabled:cursor-default ${rowClass}`}
+            className={`flex w-full items-center gap-3 rounded-2xl border-2 px-3 text-left transition active:scale-[0.99] disabled:cursor-default ${
+              compact ? 'min-h-[52px] py-2' : 'min-h-[64px] gap-4 px-4 py-3'
+            } ${rowClass}`}
           >
             <span
-              className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-lg font-extrabold ${chipClass}`}
+              className={`grid shrink-0 place-items-center rounded-xl font-extrabold ${
+                compact ? 'h-8 w-8 text-base' : 'h-10 w-10 text-lg'
+              } ${chipClass}`}
               aria-hidden="true"
             >
               {letter}
@@ -155,11 +167,15 @@ function OptionsList({ question, selectedIndex, onSelect, disabled, showFeedback
             {optionFigures?.[index] ? (
               <NvrFigureSvg
                 figure={optionFigures[index]}
-                className="h-12 w-12 shrink-0"
+                className={compact ? 'h-10 w-10 shrink-0' : 'h-12 w-12 shrink-0'}
                 title={`Option ${letter}`}
               />
             ) : null}
-            <span className="flex-1 whitespace-pre-line text-base font-semibold text-slate-900 md:text-lg">
+            <span
+              className={`flex-1 whitespace-pre-line font-semibold text-slate-900 ${
+                compact ? 'text-base' : 'text-base md:text-lg'
+              }`}
+            >
               <MathText text={option} />
             </span>
             {state === 'correct' ? (
@@ -182,6 +198,7 @@ interface WrittenAnswerBoxProps {
   onSubmit: (value: string) => void
   locked: boolean
   showFeedback: boolean
+  compact?: boolean
 }
 
 function WrittenAnswerBox({
@@ -191,19 +208,26 @@ function WrittenAnswerBox({
   onSubmit,
   locked,
   showFeedback,
+  compact = false,
 }: WrittenAnswerBoxProps) {
   const accepted = acceptedAnswersFor(question)
   const trimmed = value.trim()
 
   return (
-    <div className="rounded-2xl border-2 border-dashed border-indigo-300 bg-indigo-50 p-4">
+    <div
+      className={`rounded-2xl border-2 border-dashed border-indigo-300 bg-indigo-50 ${
+        compact ? 'p-3' : 'p-4'
+      }`}
+    >
       <p className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-indigo-700">
         <PencilLine className="h-5 w-5" aria-hidden="true" />
         Beacon Written Answer
       </p>
-      <p className="mt-1 text-sm font-semibold text-slate-600">
-        Type your answer in the box. The correct answer is only revealed once you have checked it.
-      </p>
+      {!compact ? (
+        <p className="mt-1 text-sm font-semibold text-slate-600">
+          Type your answer in the box. The correct answer is only revealed once you have checked it.
+        </p>
+      ) : null}
       <label htmlFor="beacon-written-answer" className="sr-only">
         Your written answer
       </label>
@@ -223,7 +247,9 @@ function WrittenAnswerBox({
         autoCapitalize="none"
         spellCheck={false}
         placeholder="Type your answer here"
-        className="mt-3 min-h-[56px] w-full rounded-2xl border-2 border-slate-300 bg-white px-4 py-3 text-lg font-bold text-slate-900 focus:border-indigo-500 focus:outline-none disabled:opacity-70"
+        className={`mt-3 w-full rounded-2xl border-2 border-slate-300 bg-white px-4 py-3 text-lg font-bold text-slate-900 focus:border-indigo-500 focus:outline-none disabled:opacity-70 ${
+          compact ? 'min-h-[48px]' : 'min-h-[56px]'
+        }`}
       />
       {!locked ? (
         <button
@@ -261,6 +287,8 @@ export interface QuestionViewProps {
   writtenAnswer?: string | null
   onWriteAnswer?: ((value: string) => void) | undefined
   onWrittenChange?: ((value: string) => void) | undefined
+  /** Compact mode: tighter layout used by the no-scroll practice screen. */
+  compact?: boolean
 }
 
 function StrategyPanel({ question }: { question: Question }) {
@@ -271,7 +299,12 @@ function StrategyPanel({ question }: { question: Question }) {
         <span className="text-xl" aria-hidden="true">💡</span>
         <h3 className="text-base font-black text-amber-900">Strategy Tip &amp; Common Traps</h3>
       </div>
-      <p className="text-sm font-bold leading-relaxed text-amber-950 md:text-base">{strategy.attention}</p>
+      <p className="text-sm font-bold leading-relaxed text-amber-950 md:text-base">
+        {strategy.concept}
+      </p>
+      <p className="mt-2 text-sm font-semibold leading-relaxed text-amber-900">
+        {strategy.attention}
+      </p>
       <p className="mt-2 text-sm font-semibold leading-relaxed text-amber-900">
         <span className="font-black">Watch out:</span> {strategy.trap}
       </p>
@@ -311,6 +344,7 @@ export function QuestionView({
   writtenAnswer = null,
   onWriteAnswer,
   onWrittenChange,
+  compact = false,
 }: QuestionViewProps) {
   const [scratchOpen, setScratchOpen] = useState(false)
   const [passageWidth, setPassageWidth] = useState(480)
@@ -354,18 +388,26 @@ export function QuestionView({
   }, [passage])
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={compact ? 'flex flex-col gap-3' : 'flex flex-col gap-4'}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          {questionNumber !== undefined && totalQuestions !== undefined ? (
+          {questionNumber !== undefined && totalQuestions !== undefined && !compact ? (
             <span className="rounded-full bg-indigo-600 px-4 py-1.5 text-sm font-extrabold text-white">
               Question {questionNumber} of {totalQuestions}
             </span>
           ) : null}
-          <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold text-slate-600">
+          <span
+            className={`rounded-full border border-slate-200 bg-white font-bold text-slate-600 ${
+              compact ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm'
+            }`}
+          >
             {question.topic}
           </span>
-          <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold text-slate-500">
+          <span
+            className={`rounded-full border border-slate-200 bg-white font-bold text-slate-500 ${
+              compact ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm'
+            }`}
+          >
             {'★'.repeat(question.difficulty)}
             <span className="sr-only">Difficulty {question.difficulty} of 3</span>
           </span>
@@ -374,7 +416,9 @@ export function QuestionView({
           <button
             type="button"
             onClick={() => setScratchOpen(true)}
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border-2 border-slate-200 bg-white px-4 py-2 text-sm font-extrabold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700"
+            className={`inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white font-extrabold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700 ${
+              compact ? 'min-h-[40px] px-3 py-1.5 text-xs' : 'min-h-[44px] px-4 py-2 text-sm'
+            }`}
           >
             <PencilLine className="h-5 w-5" aria-hidden="true" />
             Scratchpad
@@ -384,7 +428,9 @@ export function QuestionView({
               type="button"
               onClick={onToggleFlag}
               aria-pressed={flagged}
-              className={`inline-flex min-h-[44px] items-center gap-2 rounded-xl border-2 px-4 py-2 text-sm font-extrabold transition ${
+              className={`inline-flex items-center gap-2 rounded-xl border-2 font-extrabold transition ${
+                compact ? 'min-h-[40px] px-3 py-1.5 text-xs' : 'min-h-[44px] px-4 py-2 text-sm'
+              } ${
                 flagged
                   ? 'border-amber-400 bg-amber-100 text-amber-900'
                   : 'border-slate-200 bg-white text-slate-600 hover:border-amber-300'
@@ -427,17 +473,19 @@ export function QuestionView({
               📖 Read Text
             </button>
           </div>
-          <div className="grid gap-4 md:grid-cols-2 md:items-start">
+          <div className={`grid gap-4 md:grid-cols-2 md:items-start ${compact ? 'md:gap-3' : ''}`}>
             <section
               ref={passageBoxRef}
-              className={`${mobileView === 'text' ? 'block' : 'hidden'} rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:block md:p-5`}
+              className={`${mobileView === 'text' ? 'block' : 'hidden'} rounded-3xl border border-slate-200 bg-white shadow-sm md:block ${
+                compact ? 'p-3' : 'p-4 md:p-5'
+              }`}
               aria-label="Reading passage"
             >
               <div className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-3">
                 <BookOpen className="h-5 w-5 text-indigo-600" aria-hidden="true" />
                 <h3 className="text-base font-extrabold text-slate-900">{passage.title}</h3>
               </div>
-              <div className="max-h-[70vh] overflow-y-auto pr-1 md:max-h-[64vh]">
+              <div className={`overflow-y-auto pr-1 ${compact ? 'max-h-[42vh] md:max-h-[38vh]' : 'max-h-[70vh] md:max-h-[64vh]'}`}>
                 <LineNumberedPassage
                   content={passage.content}
                   widthPx={passageWidth}
@@ -446,12 +494,18 @@ export function QuestionView({
               </div>
             </section>
             <section
-              className={`${mobileView === 'question' ? 'flex' : 'hidden'} flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:flex md:p-5`}
+              className={`${mobileView === 'question' ? 'flex' : 'hidden'} flex-col rounded-3xl border border-slate-200 bg-white shadow-sm md:flex ${
+                compact ? 'gap-3 p-3' : 'gap-4 p-4 md:p-5'
+              }`}
             >
               {question.svgConfig && question.svgConfig.cells.length > 0 ? (
                 <NvrSvgRenderer config={question.svgConfig} className="py-1" />
               ) : null}
-              <div className="whitespace-pre-line text-lg font-bold leading-relaxed text-slate-900">
+              <div
+                className={`whitespace-pre-line font-bold leading-relaxed text-slate-900 ${
+                  compact ? 'text-base' : 'text-lg md:text-xl'
+                }`}
+              >
                 <MathText text={question.stem} />
               </div>
               {isWritten && onWriteAnswer ? (
@@ -465,6 +519,7 @@ export function QuestionView({
                   onSubmit={onWriteAnswer}
                   locked={locked}
                   showFeedback={showFeedback}
+                  compact={compact}
                 />
               ) : (
                 <OptionsList
@@ -473,6 +528,7 @@ export function QuestionView({
                   onSelect={onSelect}
                   disabled={locked}
                   showFeedback={showFeedback}
+                  compact={compact}
                 />
               )}
               {showStrategy && locked ? (
@@ -495,11 +551,19 @@ export function QuestionView({
           </div>
         </>
       ) : (
-        <section className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
+        <section
+          className={`flex flex-col rounded-3xl border border-slate-200 bg-white shadow-sm ${
+            compact ? 'gap-3 p-3' : 'gap-4 p-4 md:p-6'
+          }`}
+        >
           {question.svgConfig && question.svgConfig.cells.length > 0 ? (
             <NvrSvgRenderer config={question.svgConfig} className="py-1" />
           ) : null}
-          <div className="whitespace-pre-line text-lg font-bold leading-relaxed text-slate-900 md:text-xl">
+          <div
+            className={`whitespace-pre-line font-bold leading-relaxed text-slate-900 ${
+              compact ? 'text-base' : 'text-lg md:text-xl'
+            }`}
+          >
             <MathText text={question.stem} />
           </div>
           {isWritten && onWriteAnswer ? (
@@ -513,6 +577,7 @@ export function QuestionView({
               onSubmit={onWriteAnswer}
               locked={locked}
               showFeedback={showFeedback}
+              compact={compact}
             />
           ) : (
             <OptionsList
@@ -521,6 +586,7 @@ export function QuestionView({
               onSelect={onSelect}
               disabled={locked}
               showFeedback={showFeedback}
+              compact={compact}
             />
           )}
           {showStrategy && locked ? (

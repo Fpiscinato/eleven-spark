@@ -4,12 +4,54 @@ import { createRng, hashSeed, type Rng } from './rng'
 
 const BASE_SEED = 20261020
 
+interface OptionValue {
+  value: number
+  unit: string
+}
+
+/**
+ * Reads the number and the unit of an option so two options can be compared
+ * for mathematical equality ("$\frac{4}{16}$" and "$\frac{2}{8}$" are the
+ * same quantity, "16 cm²" and "16 cm" are not).
+ */
+function optionValue(text: string): OptionValue | null {
+  let trimmed = text.trim()
+  if (trimmed.length >= 2 && trimmed.startsWith('$') && trimmed.endsWith('$')) {
+    trimmed = trimmed.slice(1, -1).trim()
+  }
+  const fraction = trimmed.match(/^\\frac\{(-?\d+)\}\{(-?\d+)\}$/)
+  if (fraction) {
+    const denominator = Number(fraction[2])
+    if (denominator === 0) return null
+    return { value: Number(fraction[1]) / denominator, unit: '' }
+  }
+  const number = trimmed.match(/^(-?\d+(?:\.\d+)?)(.*)$/)
+  if (!number) return null
+  const rest = (number[2] ?? '').trim()
+  const unit = rest.startsWith('£') ? `£${rest.slice(1).trim()}` : rest
+  return { value: Number(number[1]), unit }
+}
+
+/** True when both options mean exactly the same quantity. */
+function sameValue(left: string, right: string): boolean {
+  const a = optionValue(left)
+  const b = optionValue(right)
+  if (!a || !b) return left.trim() === right.trim()
+  return a.unit === b.unit && Math.abs(a.value - b.value) < 1e-9
+}
+
+/** Removes the candidates that mean the same as the correct answer. */
+function withoutEquivalent(correct: string, candidates: string[]): string[] {
+  return candidates.filter((candidate) => !sameValue(correct, candidate))
+}
+
 function dedupedOptions(correct: string, candidates: string[]): string[] {
-  const seen = new Set([correct])
+  const seen = new Set<string>([correct])
   const picked: string[] = []
   for (const candidate of candidates) {
     if (picked.length === 4) break
     if (candidate === '' || seen.has(candidate)) continue
+    if (sameValue(correct, candidate)) continue
     seen.add(candidate)
     picked.push(candidate)
   }
@@ -23,7 +65,7 @@ function dedupedOptions(correct: string, candidates: string[]): string[] {
     if (core !== '' && Number.isFinite(numeric) && Number.isFinite(Number(core))) {
       candidate = `${prefix}${numeric + bump}${suffix}`
     }
-    if (candidate !== '' && !seen.has(candidate)) {
+    if (candidate !== '' && !seen.has(candidate) && !sameValue(correct, candidate)) {
       seen.add(candidate)
       picked.push(candidate)
     }
@@ -31,7 +73,7 @@ function dedupedOptions(correct: string, candidates: string[]): string[] {
   }
   while (picked.length < 4) {
     const candidate = `${correct} (${bump})`
-    if (!seen.has(candidate)) {
+    if (!seen.has(candidate) && !sameValue(correct, candidate)) {
       seen.add(candidate)
       picked.push(candidate)
     }
@@ -51,6 +93,12 @@ function simplify(numerator: number, denominator: number): string {
   return d === 1 ? String(n) : `$\\frac{${n}}{${d}}$`
 }
 
+/** Rounds a value to a given number of decimals without float noise. */
+function roundTo(value: number, decimals: number): number {
+  const factor = 10 ** decimals
+  return Math.round((value + Number.EPSILON) * factor) / factor
+}
+
 function fractionOfQuestion(rng: Rng, index: number, nonce: string): Question {
   const denominators = [2, 3, 4, 5, 6, 8, 10]
   const denominator = rng.pick(denominators)
@@ -68,7 +116,7 @@ function fractionOfQuestion(rng: Rng, index: number, nonce: string): Question {
     topic: 'fractions',
     difficulty: difficultyAt(index),
     stem: `What is $\\frac{${numerator}}{${denominator}}$ of $${amount}$?`,
-    options: dedupedOptions(String(answer), near.map(String)),
+    options: dedupedOptions(String(answer), withoutEquivalent(String(answer), near.map(String))),
     correctIndex: 0,
     answerType: 'short_text',
     acceptedAnswers: [String(answer)],
@@ -86,13 +134,16 @@ function fractionAddQuestion(rng: Rng, index: number, nonce: string): Question {
     topic: 'fractions',
     difficulty: difficultyAt(index) === 1 ? 2 : difficultyAt(index),
     stem: `Work out $\\frac{${a}}{${denominator}} + \\frac{${b}}{${denominator}}$. Give your answer in its simplest form.`,
-    options: dedupedOptions(answer, [
-      simplify(a + b + 1, denominator),
-      simplify(a * b, denominator),
-      simplify(denominator, a + b),
-      simplify(a + b - 1 > 0 ? a + b - 1 : a + b + 2, denominator),
-      simplify(a + b + 2, denominator),
-    ]),
+    options: dedupedOptions(
+      answer,
+      withoutEquivalent(answer, [
+        simplify(a + b + 1, denominator),
+        simplify(a * b, denominator),
+        simplify(denominator, a + b),
+        simplify(a + b - 1 > 0 ? a + b - 1 : a + b + 2, denominator),
+        simplify(a + b + 2, denominator),
+      ]),
+    ),
     correctIndex: 0,
     explanation: `The denominators already match, so add the numerators: $${a} + ${b} = ${a + b}$, giving $\\frac{${a + b}}{${denominator}}$. Simplifying by dividing top and bottom by ${gcd(a + b, denominator) || 1} gives ${answer.replace(/\$/g, '')}.`,
     timeTargetSeconds: 50,
@@ -107,13 +158,16 @@ function shadedFractionQuestion(rng: Rng, index: number, nonce: string): Questio
     topic: 'fractions',
     difficulty: difficultyAt(index),
     stem: `A shape is divided into ${denominator} equal parts. ${shaded} of the parts are shaded.\n\nWhat fraction of the shape is shaded?`,
-    options: dedupedOptions(answer, [
-      simplify(denominator - shaded, denominator),
-      simplify(shaded, denominator - shaded),
-      simplify(denominator, shaded),
-      `$\\frac{${shaded + 1}}{${denominator}}$`,
-      `$\\frac{${shaded}}{${denominator + 1}}$`,
-    ]),
+    options: dedupedOptions(
+      answer,
+      withoutEquivalent(answer, [
+        simplify(denominator - shaded, denominator),
+        simplify(shaded, denominator - shaded),
+        simplify(denominator, shaded),
+        `$\\frac{${shaded + 1}}{${denominator}}$`,
+        `$\\frac{${shaded}}{${denominator + 1}}$`,
+      ]),
+    ),
     correctIndex: 0,
     explanation: `There are ${denominator} equal parts altogether and ${shaded} are shaded, so the fraction is $\\frac{${shaded}}{${denominator}}$, which simplifies to ${answer.replace(/\$/g, '')}.`,
     timeTargetSeconds: 40,
@@ -182,17 +236,23 @@ function equivalentFractionQuestion(rng: Rng, index: number, nonce: string): Que
   ]
   const [n, d] = rng.pick(pairs)
   const mult = rng.int(2, 4)
+  const correct = `$\\frac{${n * mult}}{${d * mult}}$`
+  // Every distractor below is provably NOT equal to n/d, and the filter is a
+  // second safety net so the question can never have two correct options.
+  const candidates = [
+    `$\\frac{${n * mult}}{${d * mult + 1}}$`,
+    `$\\frac{${n * mult - 1}}{${d * mult}}$`,
+    `$\\frac{${n}}{${d * mult}}$`,
+    `$\\frac{${n * mult}}{${d + 1}}$`,
+    `$\\frac{${n * (mult + 1)}}{${d * mult}}$`,
+    `$\\frac{${n + 1}}{${d + mult}}$`,
+    `$\\frac{${n * mult + 1}}{${d * mult}}$`,
+  ]
   return buildQuestion(rng, 'maths', makeQuestionId(nonce, 'maths', 'fractions', index), {
     topic: 'fractions',
     difficulty: 2,
     stem: `Which fraction is equivalent to $\\frac{${n}}{${d}}$?`,
-    options: dedupedOptions(`$\\frac{${n * mult}}{${d * mult}}$`, [
-      `$\\frac{${n + 1}}{${d + mult}}$`,
-      `$\\frac{${n * mult + 1}}{${d * mult}}$`,
-      `$\\frac{${n}}{${d * mult}}$`,
-      `$\\frac{${n * mult}}{${d + 1}}$`,
-      `$\\frac{${n * (mult + 1)}}{${d * mult}}$`,
-    ]),
+    options: dedupedOptions(correct, withoutEquivalent(correct, candidates)),
     correctIndex: 0,
     explanation: `Multiplying the top and bottom by ${mult} keeps the value the same: $\\frac{${n} \\times ${mult}}{${d} \\times ${mult}} = \\frac{${n * mult}}{${d * mult}}$.`,
     timeTargetSeconds: 40,
@@ -278,9 +338,11 @@ function percentageOfMoneyQuestion(rng: Rng, index: number, nonce: string): Ques
       `£${((amount * (percent - 5)) / 100).toFixed(2)}`,
     ]),
     correctIndex: 0,
+    answerType: 'short_text',
+    acceptedAnswers: [answer, (pence / 100).toFixed(2), String(pence / 100)],
     explanation: percent === 15
       ? `10% of £$${amount}$ is £${(amount / 10).toFixed(2)} and 5% is half of that (£${(amount / 20).toFixed(2)}). Adding them gives ${answer}.`
-      : `${percent}% means ${percent} out of every £100. £$${amount} \\times ${percent / 100} = ${answer}.`,
+      : `${percent}% means ${percent} out of every £100. £$${amount} \\times ${percent / 100} = ${answer}$.`,
     timeTargetSeconds: 45,
   })
 }
@@ -288,40 +350,40 @@ function percentageOfMoneyQuestion(rng: Rng, index: number, nonce: string): Ques
 function discountQuestion(rng: Rng, index: number, nonce: string): Question {
   const percent = rng.pick([10, 20, 25, 50])
   const original = rng.int(2, 15) * 10
-  const reduced = original * (100 - percent) / 100
+  const reduced = roundTo((original * (100 - percent)) / 100, 2)
   return buildQuestion(rng, 'maths', makeQuestionId(nonce, 'maths', 'decimals_percentages', index), {
     topic: 'decimals_percentages',
     difficulty: 3,
     stem: `A coat costs £$${original}$. The price is reduced by ${percent}%.\n\nWhat is the new price?`,
-    options: dedupedOptions(`£${reduced}`, [
-      `£${original - percent}`,
-      `£${(original * percent) / 100}`,
-      `£${original + (original * percent) / 100}`,
-      `£${original}`,
-      `£${reduced - 5}`,
+    options: dedupedOptions(`£${reduced.toFixed(2)}`, [
+      `£${(original - percent).toFixed(2)}`,
+      `£${roundTo((original * percent) / 100, 2).toFixed(2)}`,
+      `£${roundTo(original + (original * percent) / 100, 2).toFixed(2)}`,
+      `£${original.toFixed(2)}`,
+      `£${roundTo(reduced - 5, 2).toFixed(2)}`,
     ]),
     correctIndex: 0,
-    explanation: `${percent}% of £$${original}$ is £${(original * percent) / 100}. Subtract the reduction: £$${original} -$ £${(original * percent) / 100} = £${reduced}.`,
+    explanation: `${percent}% of £$${original}$ is £${roundTo((original * percent) / 100, 2).toFixed(2)}. Subtract the reduction: £$${original}$ − £${roundTo((original * percent) / 100, 2).toFixed(2)} = £${reduced.toFixed(2)}.`,
     timeTargetSeconds: 55,
   })
 }
 
 function decimalDivisionQuestion(rng: Rng, index: number, nonce: string): Question {
   const value = rng.pick([3.6, 4.8, 5.4, 7.2, 8.1, 6.3])
-  const answer = value / 10
+  const answer = roundTo(value / 10, 2)
   return buildQuestion(rng, 'maths', makeQuestionId(nonce, 'maths', 'decimals_percentages', index), {
     topic: 'decimals_percentages',
     difficulty: 1,
     stem: `Work out $${value} \\div 10$.`,
     options: [
       `$${answer}$`,
-      `$${value * 10}$`,
-      `$${value + 10}$`,
-      `$${(value / 100).toFixed(3)}$`,
-      `$${value - 10 < 0 ? Math.abs(value - 10) : value - 10}$`,
+      `$${roundTo(value * 10, 2)}$`,
+      `$${roundTo(value + 10, 2)}$`,
+      `$${roundTo(value / 100, 3)}$`,
+      `$${roundTo(value - 10 < 0 ? Math.abs(value - 10) : value - 10, 2)}$`,
     ],
     correctIndex: 0,
-    explanation: `Dividing by 10 moves every digit one place to the right, so the decimal point shifts once: $${value} \\div 10 = $${answer}$`.replace('$$', '$'),
+    explanation: `Dividing by 10 moves every digit one place to the right, so the decimal point shifts once: $${value} \\div 10 = ${answer}$.`,
     timeTargetSeconds: 30,
   })
 }
@@ -402,6 +464,8 @@ function shareMoneyQuestion(rng: Rng, index: number, nonce: string): Question {
     stem: `£$${total}$ is shared between Amy and Ben in the ratio $${a} : ${b}$.\n\nHow much does ${askA ? 'Amy' : 'Ben'} receive?`,
     options: [`£${targetShare}`, ...distractors.map((value) => `£${value}`)],
     correctIndex: 0,
+    answerType: 'short_text',
+    acceptedAnswers: [`£${targetShare}`, String(targetShare)],
     explanation: `There are ${parts} parts in total, so one part is £${total / parts}. ${askA ? `Amy gets ${a} parts: £${total / parts} × ${a} = £${shareA}` : `Ben gets ${b} parts: £${total / parts} × ${b} = £${shareB}`}.`,
     timeTargetSeconds: 55,
   })
@@ -418,6 +482,8 @@ function recipeQuestion(rng: Rng, index: number, nonce: string): Question {
     stem: `A cake recipe uses ${baseAmount} g of flour for ${basePeople} people.\n\nHow much flour is needed for ${scaledPeople} people?`,
     options: [`${answer} g`, `${baseAmount} g`, `${answer + 100} g`, `${answer + baseAmount} g`, `${answer - 50} g`],
     correctIndex: 0,
+    answerType: 'short_text',
+    acceptedAnswers: [`${answer} g`, String(answer), `${answer} grams`],
     explanation: `For one person you need $${baseAmount} \\div ${basePeople} = ${baseAmount / basePeople}$ g. For ${scaledPeople} people: $${baseAmount / basePeople} \\times ${scaledPeople} = ${answer}$ g.`,
     timeTargetSeconds: 45,
   })
@@ -446,6 +512,8 @@ function counterRatioQuestion(rng: Rng, index: number, nonce: string): Question 
     stem: `In a bag, the ratio of red counters to blue counters is $${red} : ${blue}$. There are ${total} counters altogether.\n\nHow many red counters are in the bag?`,
     options: [String(redCount), ...distractors.map(String)],
     correctIndex: 0,
+    answerType: 'short_text',
+    acceptedAnswers: [String(redCount)],
     explanation: `There are ${red + blue} parts, so one part is $${total} \\div ${red + blue} = ${total / (red + blue)}$. Red has ${red} parts: ${total / (red + blue)} × ${red} = ${redCount}.`,
     timeTargetSeconds: 50,
   })
@@ -493,7 +561,7 @@ function nthTermQuestion(rng: Rng, index: number, nonce: string): Question {
       `$${step + 2}n ${signed(adjust - 2)}$`,
     ]),
     correctIndex: 0,
-    explanation: `The terms go up by ${step} each time, so the rule starts with ${step}n. The first term of ${step}n would be ${step}, but we need ${start}, so we adjust by ${start - step}: the rule is ${step}n + ${start - step}.`,
+    explanation: `The terms go up by ${step} each time, so the rule starts with ${step}n. The first term of ${step}n would be ${step}, but we need ${start}, so we adjust by ${Math.abs(adjust)}: the rule is ${step}n ${signed(adjust)}.`,
     timeTargetSeconds: 55,
   })
 }
@@ -576,6 +644,8 @@ function areaPerimeterQuestion(rng: Rng, index: number, nonce: string): Question
       stem: `A rectangle is $${length}$ cm long and $${width}$ cm wide.\n\nWhat is its area?`,
       options: [`${area} cm²`, `${2 * (length + width)} cm`, `${area} cm`, `${length + width} cm²`, `${area + length} cm²`],
       correctIndex: 0,
+      answerType: 'short_text',
+      acceptedAnswers: [`${area} cm²`, String(area), `${area} cm2`],
       explanation: `Area of a rectangle is length × width: $${length} \\times ${width} = ${area}$ cm². Area always uses square units, so watch the units in the options.`,
       timeTargetSeconds: 50,
     })
@@ -587,6 +657,8 @@ function areaPerimeterQuestion(rng: Rng, index: number, nonce: string): Question
     stem: `A rectangle is $${length}$ cm long and $${width}$ cm wide.\n\nWhat is its perimeter?`,
     options: [`${perimeter} cm`, `${length * width} cm`, `${perimeter} cm²`, `${length * width} cm²`, `${perimeter + 2} cm`],
     correctIndex: 0,
+    answerType: 'short_text',
+    acceptedAnswers: [`${perimeter} cm`, String(perimeter)],
     explanation: `Perimeter is the distance all the way around: $2 \\times (${length} + ${width}) = ${perimeter}$ cm. Perimeter uses single units, not square units.`,
     timeTargetSeconds: 45,
   })
@@ -633,6 +705,8 @@ function volumeQuestion(rng: Rng, index: number, nonce: string): Question {
     stem: `A cuboid is $${length}$ cm long, $${width}$ cm wide and $${height}$ cm high.\n\nWhat is its volume?`,
     options: [`${volume} cm³`, `${2 * (length + width + height)} cm`, `${volume} cm²`, `${length * width + width * height} cm³`, `${volume + length} cm³`],
     correctIndex: 0,
+    answerType: 'short_text',
+    acceptedAnswers: [`${volume} cm³`, String(volume), `${volume} cm3`],
     explanation: `Volume of a cuboid is length × width × height: $${length} \\times ${width} \\times ${height} = ${volume}$ cm³. Volume uses cubic units.`,
     timeTargetSeconds: 55,
   })
@@ -662,6 +736,8 @@ function triangleAreaQuestion(rng: Rng, index: number, nonce: string): Question 
     stem: `A triangle has a base of $${base}$ cm and a height of $${height}$ cm.\n\nWhat is its area?`,
     options: [`${area} cm²`, `${base * height} cm²`, `${base + height} cm²`, `${area} cm`, `${base * height * 2} cm²`],
     correctIndex: 0,
+    answerType: 'short_text',
+    acceptedAnswers: [`${area} cm²`, String(area), `${area} cm2`],
     explanation: `Area of a triangle is half base × height: $\\frac{1}{2} \\times ${base} \\times ${height} = ${area}$ cm².`,
     timeTargetSeconds: 50,
   })
@@ -689,10 +765,14 @@ function journeyDurationQuestion(rng: Rng, index: number, nonce: string): Questi
   const hours = Math.floor(duration / 60)
   const minutes = duration % 60
   const writtenAnswers = [
-    hours > 0 ? `${hours} h ${minutes} min` : `${duration} min`,
-    hours > 0 ? `${hours} hour${hours === 1 ? '' : 's'} ${minutes} minute${minutes === 1 ? '' : 's'}` : `${duration} minutes`,
-    hours > 0 ? `${hours}h ${minutes}m` : `${duration}m`,
-  ]
+    `${duration} min`,
+    `${duration} minutes`,
+    hours > 0 ? `${hours} h ${minutes} min` : '',
+    hours > 0 ? `${hours} hour${hours === 1 ? '' : 's'} ${minutes} minute${minutes === 1 ? '' : 's'}` : '',
+    hours > 0 ? `${hours}h ${minutes}m` : '',
+  ].filter((entry) => entry !== '')
+  const hourLabel = hours === 1 ? 'hour' : 'hours'
+  const minuteLabel = minutes === 1 ? 'minute' : 'minutes'
   return buildQuestion(rng, 'maths', makeQuestionId(nonce, 'maths', 'timetables_speed', index), {
     topic: 'timetables_speed',
     difficulty: 2,
@@ -704,7 +784,7 @@ function journeyDurationQuestion(rng: Rng, index: number, nonce: string): Questi
     correctIndex: 0,
     answerType: 'short_text',
     acceptedAnswers: writtenAnswers,
-    explanation: `From ${format(startTotal)} to ${format(endTotal)} is ${Math.floor(duration / 60)} hour${duration >= 60 ? 's' : ''} and ${duration % 60} minutes — ${duration} minutes in total.`,
+    explanation: `From ${format(startTotal)} to ${format(endTotal)} is ${hours} ${hourLabel} and ${minutes} ${minuteLabel} — ${duration} minutes in total.`,
     timeTargetSeconds: 60,
   })
 }
@@ -813,6 +893,8 @@ function meanQuestion(rng: Rng, index: number, nonce: string): Question {
     stem: `What is the mean of these numbers?\n\n$${ordered.join(', ')}$`,
     options: [String(mean), String(mean + 1), String(mean - 1), String(mean + 2), String(mean + 3)],
     correctIndex: 0,
+    answerType: 'short_text',
+    acceptedAnswers: [String(mean)],
     explanation: `Add them all: $${ordered.join(' + ')} = ${mean * count}$. Then divide by how many numbers there are: $${mean * count} \\div ${count} = ${mean}$.`,
     timeTargetSeconds: 55,
   })
@@ -823,7 +905,7 @@ function medianQuestion(rng: Rng, index: number, nonce: string): Question {
   const base = rng.int(2, 12)
   const values = odd
     ? [base, base + 3, base + 7, base + 4, base + 1]
-    : [base, base + 5, base + 2, base + 9]
+    : [base, base + 4, base + 2, base + 8]
   const ordered = [...values].sort((a, b) => a - b)
   const median = odd
     ? ordered[2] ?? base
@@ -834,6 +916,8 @@ function medianQuestion(rng: Rng, index: number, nonce: string): Question {
     stem: `What is the median of these numbers?\n\n$${values.join(', ')}$`,
     options: [String(median), String(ordered[0] ?? base), String(ordered[ordered.length - 1] ?? base), String(median + 1), String((ordered[0] ?? base) + (ordered[ordered.length - 1] ?? base))],
     correctIndex: 0,
+    answerType: 'short_text',
+    acceptedAnswers: [String(median)],
     explanation: `First put them in order: $${ordered.join(', ')}$. ${
       odd
         ? `With 5 numbers, the middle one (3rd) is ${median}.`
@@ -865,6 +949,8 @@ function modeQuestion(rng: Rng, index: number, nonce: string): Question {
     stem: `What is the mode of these numbers?\n\n$${values.join(', ')}$`,
     options: [String(mode), ...distractors.map(String)],
     correctIndex: 0,
+    answerType: 'short_text',
+    acceptedAnswers: [String(mode)],
     explanation: `The mode is the value that appears most often. ${mode} appears ${values.filter((v) => v === mode).length} times — more than any other number.`,
     timeTargetSeconds: 40,
   })
@@ -880,6 +966,8 @@ function rangeQuestion(rng: Rng, index: number, nonce: string): Question {
     stem: `What is the range of these numbers?\n\n$${smallest}, ${middle}, ${biggest}$`,
     options: [String(biggest - smallest), String(biggest), String(smallest), String(biggest + smallest), String(biggest - middle)],
     correctIndex: 0,
+    answerType: 'short_text',
+    acceptedAnswers: [String(biggest - smallest)],
     explanation: `Range = biggest − smallest: $${biggest} - ${smallest} = ${biggest - smallest}$.`,
     timeTargetSeconds: 35,
   })

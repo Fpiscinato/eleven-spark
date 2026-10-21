@@ -199,7 +199,12 @@ export function Progress({ onNavigate }: ProgressProps) {
             <Timer className="h-5 w-5" aria-hidden="true" />
           </div>
           <p className="text-2xl font-black text-slate-900">{formatClock(summary.avgTimeSeconds)}</p>
-          <p className="text-sm font-bold text-slate-600">Average per question</p>
+          <p className="text-sm font-bold text-slate-600">
+            Average per question
+            {summary.medianTimeSeconds > 0
+              ? ` · typical ${formatClock(summary.medianTimeSeconds)}`
+              : ''}
+          </p>
         </div>
       </div>
 

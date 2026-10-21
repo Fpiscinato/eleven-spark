@@ -6,6 +6,7 @@ import { useParentGate } from '../context/ParentGateContext'
 import type { Attempt, Session, Subject } from '../db/schemas'
 import { SUBJECTS } from '../db/schemas'
 import { getCompletedSessions, getAllAttempts } from '../lib/stats'
+import { averageSeconds } from '../lib/timing'
 import { SUBJECT_META } from '../lib/theme'
 import { computeRoadmap, masteryFor, type RoadmapSnapshot } from '../utils/roadmapCalculator'
 import { EmptyState, PageSpinner, ScreenHeader, btnSecondaryClass, cardClass } from '../components/ui'
@@ -265,7 +266,7 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
 
       const correct = list.filter((attempt) => attempt.isCorrect).length
       const accuracy = Math.round((correct / list.length) * 100)
-      const avgTimeSeconds = Math.round(list.reduce((sum, attempt) => sum + attempt.timeSpentSeconds, 0) / list.length)
+      const avgTimeSeconds = averageSeconds(list.map((attempt) => attempt.timeSpentSeconds))
       const avgTargetSeconds = Math.round(targetSum / targetCount)
       const onPace = avgTimeSeconds <= avgTargetSeconds * ON_PACE_RATIO
 
@@ -394,7 +395,7 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
                 className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-extrabold text-white transition hover:bg-indigo-700 active:scale-[0.98]"
               >
                 <Rocket className="h-4 w-4" aria-hidden="true" />
-                Free practice
+                Practice
               </button>
             </div>
           </section>
@@ -621,7 +622,7 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
             className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-extrabold text-white transition hover:bg-indigo-700 active:scale-[0.98]"
           >
             <Rocket className="h-4 w-4" aria-hidden="true" />
-            Free practice
+            Practice
           </button>
         </div>
       </section>

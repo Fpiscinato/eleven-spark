@@ -37,6 +37,19 @@ function checkIntegrity(question: Question, issues: IntegrityIssue[], notes: Not
     issues.push({ id: question.id, reason: `correctIndex ${question.correctIndex} out of range 0-4` })
   }
 
+  // KaTeX only renders when the "$" delimiters are balanced, otherwise the
+  // child sees the raw markup instead of a formula.
+  const mathTexts: ReadonlyArray<readonly [string, string]> = [
+    ['stem', question.stem],
+    ['explanation', question.explanation],
+    ...question.options.map((option, index): readonly [string, string] => [`option ${index}`, option]),
+  ]
+  for (const [field, text] of mathTexts) {
+    if ((text.match(/\$/g) ?? []).length % 2 !== 0) {
+      issues.push({ id: question.id, reason: `${field} has unbalanced "$" delimiters` })
+    }
+  }
+
   const optionFigures = question.svgConfig?.optionFigures ?? []
   if (optionFigures.length > 0) {
     checkNvrOptionFigures(question, optionFigures, issues)

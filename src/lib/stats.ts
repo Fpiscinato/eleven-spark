@@ -2,6 +2,7 @@ import { db } from '../db/database'
 import { SUBJECTS, type Attempt, type Difficulty, type Question, type Session, type Subject } from '../db/schemas'
 import { localDayKey, startOfToday } from './format'
 import { getMistakesClearedAt } from './sessionHelpers'
+import { averageSeconds, isAnomalousTimeSpent, medianSeconds, totalUsableSeconds } from './timing'
 
 export interface SubjectStat {
   subject: Subject
@@ -26,6 +27,7 @@ export interface DashboardStats {
   streakDays: number
   openMistakes: number
   avgTimeSeconds: number
+  medianTimeSeconds: number
 }
 
 export interface MistakeEntry {
@@ -56,16 +58,30 @@ export function summariseAttempts(attempts: Attempt[]): {
   correct: number
   accuracy: number
   avgTimeSeconds: number
+  medianTimeSeconds: number
+  timedAttempts: number
 } {
   const total = attempts.length
   const correct = attempts.filter((a) => a.isCorrect).length
-  const totalTime = attempts.reduce((sum, a) => sum + a.timeSpentSeconds, 0)
+  // Attempts that were left open far too long (tab left open, device asleep)
+  // are anomalies: they are excluded from the "average time" so the number
+  // only ever reflects real thinking time.
+  const usableTimes = attempts
+    .filter((attempt) => !isAnomalousTimeSpent(attempt.timeSpentSeconds))
+    .map((attempt) => attempt.timeSpentSeconds)
   return {
     total,
     correct,
     accuracy: total === 0 ? 0 : Math.round((correct / total) * 100),
-    avgTimeSeconds: total === 0 ? 0 : Math.round(totalTime / total),
+    avgTimeSeconds: averageSeconds(usableTimes),
+    medianTimeSeconds: medianSeconds(usableTimes),
+    timedAttempts: usableTimes.length,
   }
+}
+
+/** Total genuine (non-anomalous) thinking time across a list of attempts. */
+export function attemptsRealTimeSeconds(attempts: Attempt[]): number {
+  return totalUsableSeconds(attempts.map((attempt) => attempt.timeSpentSeconds))
 }
 
 export function subjectStats(attempts: Attempt[]): SubjectStat[] {
@@ -162,5 +178,6 @@ export async function getDashboardStats(profileId: string): Promise<DashboardSta
     streakDays,
     openMistakes,
     avgTimeSeconds: summary.avgTimeSeconds,
+    medianTimeSeconds: summary.medianTimeSeconds,
   }
 }
