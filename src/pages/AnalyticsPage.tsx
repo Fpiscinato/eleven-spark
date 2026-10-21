@@ -384,12 +384,9 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
                 )
               })}
             </div>
-            <div className="mt-5 flex flex-wrap items-center gap-2 rounded-2xl bg-slate-50 px-4 py-3">
-              <p className="flex items-center gap-2 text-sm font-bold text-slate-600">
-                <Flame className="h-4 w-4 text-orange-500" aria-hidden="true" />
-                Pick a topic above to practise it right away.
-              </p>
-            </div>
+            <p className="mt-3 text-xs font-bold text-slate-500">
+              Tap any topic above to practise it right away.
+            </p>
           </section>
         )}
 
