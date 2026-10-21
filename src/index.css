@@ -125,16 +125,6 @@ button {
   font-family: inherit;
 }
 
-/* A soft fade at the bottom of the question area: it tells the child that
-   there is more to read below without making her scroll to find it. */
-.scroll-fade {
-  background-image: linear-gradient(to top, #f8fafc, transparent);
-}
-
-[data-theme='dark'] .scroll-fade {
-  background-image: linear-gradient(to top, #0b1120, transparent);
-}
-
 @media print {
   body * {
     visibility: hidden;

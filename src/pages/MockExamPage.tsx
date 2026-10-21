@@ -527,6 +527,8 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
   const questionShownAtRef = useRef(0)
   const timeSpentRef = useRef<Record<string, number>>({})
   const sectionEndingRef = useRef(false)
+  /** True once the paper has been handed in: no more snapshots, no resume. */
+  const paperFinishedRef = useRef(false)
   const engineRef = useRef<Engine | null>(null)
   const phaseRef = useRef<Phase>('intro')
 
@@ -555,6 +557,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
 
   useEffect(() => {
     if (!engine || (phase !== 'running' && phase !== 'transition')) return
+    if (paperFinishedRef.current) return
     const { passagesById, ...rest } = engine
     writeSession(SESSION_KEYS.mockEngine, {
       engine: rest,
@@ -635,6 +638,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
       timeSpentRef.current = {}
       questionShownAtRef.current = Date.now()
       sectionEndingRef.current = false
+      paperFinishedRef.current = false
       setReport(null)
       setFinishStep(0)
       setAlert(null)
@@ -769,6 +773,11 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
         details,
         previousBest,
       })
+      // The paper is done: the saved engine is deleted so the child is never
+      // sent back to the last question of a finished exam.
+      paperFinishedRef.current = true
+      setEngine(null)
+      removeSession(SESSION_KEYS.mockEngine)
       setPhase('results')
     },
     [fetchPersonalBest],

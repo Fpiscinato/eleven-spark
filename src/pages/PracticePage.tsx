@@ -151,6 +151,8 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
   const [timerRunning, setTimerRunning] = useState(true)
   const shownAtRef = useRef(0)
   const startedAtRef = useRef(0)
+  const feedbackRef = useRef<HTMLDivElement>(null)
+  const helpRef = useRef<HTMLDivElement>(null)
   const endedAtRef = useRef<number | null>(null)
   const finishedRef = useRef(false)
   const progressKey = `${SESSION_KEYS.practiceProgress}${run.sessionId}`
@@ -353,6 +355,19 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
     if (index >= run.questions.length - 1) stopTimers()
   }, [pending, isConfirmed, question, index, run.sessionId, run.questions.length, profileId, stopTimers])
 
+  // After answering, the feedback and the two help buttons appear below the
+  // question: they are scrolled into view so the child never has to hunt for
+  // them behind the action bar.
+  useEffect(() => {
+    if (!isConfirmed) return
+    const target = helpView !== 'none' ? helpRef.current : feedbackRef.current
+    if (!target) return
+    const id = window.setTimeout(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, 60)
+    return () => window.clearTimeout(id)
+  }, [isConfirmed, index, helpView])
+
   const goNext = useCallback(() => {
     if (isLast) {
       finalize()
@@ -365,29 +380,31 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
     shownAtRef.current = Date.now()
   }, [isLast, finalize])
 
-  const answeredCount = outcomes.filter((entry) => entry !== null).length
   const subjectMeta = SUBJECT_META[question.subject]
   const progressPercent = ((index + 1) / run.questions.length) * 100
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-3 md:h-[calc(100dvh-133px)] md:min-h-0 md:overflow-hidden">
-      <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
-        <div className="flex min-w-[140px] flex-1 items-center gap-2">
-          <div className="h-3 flex-1 overflow-hidden rounded-full bg-slate-100">
+      <header className="flex shrink-0 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-2.5 py-1.5 shadow-sm">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
             <div
               className="h-full rounded-full bg-indigo-600 transition-all"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <span className="text-sm font-extrabold text-slate-600 tabular-nums">
+          <span className="text-xs font-extrabold text-slate-600 tabular-nums">
             {index + 1}/{run.questions.length}
           </span>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${subjectMeta.badgeClass}`}>
+        <span
+          className={`hidden max-w-[11rem] truncate rounded-full px-2.5 py-0.5 text-xs font-extrabold sm:inline-block ${subjectMeta.badgeClass}`}
+          title={subjectMeta.label}
+        >
           {subjectMeta.label}
         </span>
         <span
-          className="rounded-full bg-slate-100 px-3 py-1 text-sm font-black text-slate-600 tabular-nums"
+          className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-black text-slate-600 tabular-nums"
           role="timer"
           aria-label={`Time used ${formatClock(elapsed)}`}
         >
@@ -396,10 +413,10 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
         <button
           type="button"
           onClick={finalize}
-          className={`${btnSecondaryClass} min-h-[40px] px-3 py-1.5 text-xs`}
+          aria-label="Stop and save"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border-2 border-slate-200 bg-white text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700"
         >
           <Square className="h-4 w-4" aria-hidden="true" />
-          Stop &amp; save
         </button>
       </header>
 
@@ -424,6 +441,7 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
 
           {isConfirmed && paceMessage ? (
             <div
+              ref={feedbackRef}
               className={`rounded-2xl border-2 px-4 py-3 text-base font-extrabold ${
                 paceMessage.correct
                   ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
@@ -442,36 +460,8 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
             </div>
           ) : null}
 
-          {isConfirmed ? (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setHelpView((view) => (view === 'quick' ? 'none' : 'quick'))}
-                  aria-pressed={helpView === 'quick'}
-                  className={`inline-flex min-h-[48px] items-center gap-2 rounded-2xl border-2 px-4 py-2 text-sm font-extrabold transition ${
-                    helpView === 'quick'
-                      ? 'border-amber-500 bg-amber-500 text-slate-950'
-                      : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
-                  }`}
-                >
-                  <Lightbulb className="h-5 w-5" aria-hidden="true" />
-                  💡 Quick Explanation
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setHelpView((view) => (view === 'tutorial' ? 'none' : 'tutorial'))}
-                  aria-pressed={helpView === 'tutorial'}
-                  className={`inline-flex min-h-[48px] items-center gap-2 rounded-2xl border-2 px-4 py-2 text-sm font-extrabold transition ${
-                    helpView === 'tutorial'
-                      ? 'border-indigo-600 bg-indigo-600 text-white'
-                      : 'border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
-                  }`}
-                >
-                  <Brain className="h-5 w-5" aria-hidden="true" />
-                  🧠 Learn How to Solve (Tutorial)
-                </button>
-              </div>
+          {isConfirmed && helpView !== 'none' ? (
+            <div ref={helpRef} className="flex flex-col gap-3">
               {helpView === 'quick' ? (
                 <QuickExplanation question={question} writtenMode={isWrittenQuestion} />
               ) : null}
@@ -479,20 +469,49 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
             </div>
           ) : null}
         </div>
-        {/* A soft fade tells the child that there is more to read below. */}
-        <div
-          className="scroll-fade pointer-events-none absolute inset-x-0 bottom-0 h-10"
-          aria-hidden="true"
-        />
       </div>
 
-      <footer className="sticky bottom-[calc(64px+env(safe-area-inset-bottom))] z-20 -mx-4 shrink-0 border-t-2 border-slate-200 bg-white px-4 py-3 md:static md:mx-0 md:rounded-2xl md:border-2 md:border-slate-200 md:shadow-sm">
+      <footer className="sticky bottom-[calc(64px+env(safe-area-inset-bottom))] z-20 -mx-4 shrink-0 border-t-2 border-slate-200 bg-white px-4 py-2.5 md:static md:mx-0 md:rounded-2xl md:border-2 md:border-slate-200 md:shadow-sm">
         {isConfirmed ? (
-          <button type="button" onClick={goNext} className={`${btnPrimaryClass} w-full`}>
-            {isLast ? 'See my results' : 'Next question'}
-          </button>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setHelpView((view) => (view === 'quick' ? 'none' : 'quick'))}
+                aria-pressed={helpView === 'quick'}
+                className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-2xl border-2 px-2 py-1.5 text-xs font-extrabold transition ${
+                  helpView === 'quick'
+                    ? 'border-amber-500 bg-amber-500 text-slate-950'
+                    : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
+                }`}
+              >
+                <Lightbulb className="h-4 w-4" aria-hidden="true" />
+                💡 Quick Explanation
+              </button>
+              <button
+                type="button"
+                onClick={() => setHelpView((view) => (view === 'tutorial' ? 'none' : 'tutorial'))}
+                aria-pressed={helpView === 'tutorial'}
+                className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-2xl border-2 px-2 py-1.5 text-xs font-extrabold transition ${
+                  helpView === 'tutorial'
+                    ? 'border-indigo-600 bg-indigo-600 text-white'
+                    : 'border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
+                }`}
+              >
+                <Brain className="h-4 w-4" aria-hidden="true" />
+                🧠 Learn How to Solve
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={goNext}
+              className={`${btnPrimaryClass} min-h-[48px] w-full py-2.5 text-base`}
+            >
+              {isLast ? 'See my results' : 'Next question'}
+            </button>
+          </div>
         ) : isWrittenQuestion ? (
-          <p className="text-center text-sm font-bold text-slate-400">
+          <p className="py-2 text-center text-sm font-bold text-slate-500">
             Type your answer in the box above, then press &quot;Check my answer&quot;.
           </p>
         ) : (
@@ -500,15 +519,12 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
             type="button"
             onClick={handleConfirm}
             disabled={pending === null}
-            className={`${btnPrimaryClass} w-full`}
+            className={`${btnPrimaryClass} min-h-[48px] w-full py-2.5 text-base`}
           >
             <Check className="h-5 w-5" aria-hidden="true" />
             Confirm Answer
           </button>
         )}
-        <p className="mt-2 text-center text-xs font-bold text-slate-400">
-          {answeredCount} of {run.questions.length} answered · take your time and read every option.
-        </p>
       </footer>
     </div>
   )

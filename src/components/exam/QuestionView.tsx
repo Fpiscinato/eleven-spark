@@ -114,7 +114,7 @@ function OptionsList({
 }: OptionsListProps) {
   const optionFigures = question.svgConfig?.optionFigures
   return (
-    <div className={compact ? 'grid gap-2' : 'grid gap-3'}>
+    <div className={compact ? 'grid gap-1.5' : 'grid gap-3'}>
       {question.options.map((option, index) => {
         const letter = OPTION_LETTERS[index]
         const isSelected = selectedIndex === index
@@ -152,13 +152,13 @@ function OptionsList({
             type="button"
             disabled={disabled}
             onClick={() => onSelect(index)}
-            className={`flex w-full items-center gap-3 rounded-2xl border-2 px-3 text-left transition active:scale-[0.99] disabled:cursor-default ${
-              compact ? 'min-h-[52px] py-2' : 'min-h-[64px] gap-4 px-4 py-3'
+            className={`flex w-full items-center rounded-2xl border-2 text-left transition active:scale-[0.99] disabled:cursor-default ${
+              compact ? 'min-h-[44px] gap-2 px-2.5 py-1.5' : 'min-h-[64px] gap-4 px-4 py-3'
             } ${rowClass}`}
           >
             <span
-              className={`grid shrink-0 place-items-center rounded-xl font-extrabold ${
-                compact ? 'h-8 w-8 text-base' : 'h-10 w-10 text-lg'
+              className={`grid shrink-0 place-items-center font-extrabold ${
+                compact ? 'h-7 w-7 rounded-lg text-sm' : 'h-10 w-10 rounded-xl text-lg'
               } ${chipClass}`}
               aria-hidden="true"
             >
@@ -167,22 +167,22 @@ function OptionsList({
             {optionFigures?.[index] ? (
               <NvrFigureSvg
                 figure={optionFigures[index]}
-                className={compact ? 'h-10 w-10 shrink-0' : 'h-12 w-12 shrink-0'}
+                className={compact ? 'h-9 w-9 shrink-0' : 'h-12 w-12 shrink-0'}
                 title={`Option ${letter}`}
               />
             ) : null}
             <span
               className={`flex-1 whitespace-pre-line font-semibold text-slate-900 ${
-                compact ? 'text-base' : 'text-base md:text-lg'
+                compact ? 'text-[15px] leading-snug' : 'text-base md:text-lg'
               }`}
             >
               <MathText text={option} />
             </span>
             {state === 'correct' ? (
-              <Check className="h-6 w-6 shrink-0 text-emerald-600" aria-hidden="true" />
+              <Check className={compact ? 'h-5 w-5 shrink-0 text-emerald-600' : 'h-6 w-6 shrink-0 text-emerald-600'} aria-hidden="true" />
             ) : null}
             {state === 'wrong' ? (
-              <X className="h-6 w-6 shrink-0 text-rose-600" aria-hidden="true" />
+              <X className={compact ? 'h-5 w-5 shrink-0 text-rose-600' : 'h-6 w-6 shrink-0 text-rose-600'} aria-hidden="true" />
             ) : null}
           </button>
         )
@@ -403,25 +403,28 @@ export function QuestionView({
           >
             {question.topic}
           </span>
-          <span
-            className={`rounded-full border border-slate-200 bg-white font-bold text-slate-500 ${
-              compact ? 'px-2.5 py-0.5 text-xs' : 'px-3 py-1.5 text-sm'
-            }`}
-          >
-            {'★'.repeat(question.difficulty)}
+          {/* In the compact practice screen the stars take precious vertical
+              space without teaching anything, so they are dropped. */}
+          {compact ? (
             <span className="sr-only">Difficulty {question.difficulty} of 3</span>
-          </span>
+          ) : (
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-bold text-slate-500">
+              {'★'.repeat(question.difficulty)}
+              <span className="sr-only">Difficulty {question.difficulty} of 3</span>
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setScratchOpen(true)}
-            className={`inline-flex items-center gap-2 rounded-xl border-2 border-slate-200 bg-white font-extrabold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700 ${
-              compact ? 'min-h-[40px] px-3 py-1.5 text-xs' : 'min-h-[44px] px-4 py-2 text-sm'
+            aria-label="Open the scratchpad"
+            className={`inline-flex items-center justify-center rounded-xl border-2 border-slate-200 bg-white font-extrabold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700 ${
+              compact ? 'h-9 w-9' : 'min-h-[44px] gap-2 px-4 py-2 text-sm'
             }`}
           >
-            <PencilLine className="h-5 w-5" aria-hidden="true" />
-            Scratchpad
+            <PencilLine className={compact ? 'h-4 w-4' : 'h-5 w-5'} aria-hidden="true" />
+            {compact ? null : 'Scratchpad'}
           </button>
           {onToggleFlag ? (
             <button
@@ -495,7 +498,7 @@ export function QuestionView({
             </section>
             <section
               className={`${mobileView === 'question' ? 'flex' : 'hidden'} flex-col rounded-3xl border border-slate-200 bg-white shadow-sm md:flex ${
-                compact ? 'gap-3 p-3' : 'gap-4 p-4 md:p-5'
+                compact ? 'gap-2.5 p-3' : 'gap-4 p-4 md:p-5'
               }`}
             >
               {question.svgConfig && question.svgConfig.cells.length > 0 ? (
@@ -553,7 +556,7 @@ export function QuestionView({
       ) : (
         <section
           className={`flex flex-col rounded-3xl border border-slate-200 bg-white shadow-sm ${
-            compact ? 'gap-3 p-3' : 'gap-4 p-4 md:p-6'
+            compact ? 'gap-2.5 p-3' : 'gap-4 p-4 md:p-6'
           }`}
         >
           {question.svgConfig && question.svgConfig.cells.length > 0 ? (
