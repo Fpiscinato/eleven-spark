@@ -1408,7 +1408,8 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
   const rubricComplete = CREATIVE_RUBRIC.every((criterion) => (engine.creativeScores?.[criterion] ?? 0) > 0)
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-3 md:h-[calc(100dvh-133px)] md:min-h-0 md:overflow-hidden">
+    <div className="md:fixed md:inset-0 md:z-50 md:flex md:justify-center md:bg-slate-50 md:px-6 md:py-4">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 md:h-full md:min-h-0 md:overflow-hidden">
       {alert ? (
         <div
           role="status"
@@ -1787,6 +1788,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
           </div>
         </div>
       ) : null}
+      </div>
     </div>
   )
 }

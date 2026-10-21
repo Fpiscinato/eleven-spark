@@ -384,7 +384,8 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
   const progressPercent = ((index + 1) / run.questions.length) * 100
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-3 md:h-[calc(100dvh-133px)] md:min-h-0 md:overflow-hidden">
+    <div className="md:fixed md:inset-0 md:z-50 md:flex md:justify-center md:bg-slate-50 md:px-6 md:py-4">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-2 md:h-full md:min-h-0 md:overflow-hidden">
       <header className="flex shrink-0 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-2.5 py-1.5 shadow-sm">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
@@ -526,6 +527,7 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
           </button>
         )}
       </footer>
+      </div>
     </div>
   )
 }
