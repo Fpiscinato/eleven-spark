@@ -57,6 +57,6 @@ Requires an authenticated Wrangler session (`npx wrangler login`) with access to
 
 ## How to tell which version is running
 
-- **Settings → App version**: the only place that shows the version (`v1.7.3`), the question bank version (`Bank v6`) and what is new in that version.
+- **Settings → App version**: the only place that shows the version (`v1.7.4`), the question bank version (`Bank v6`) and what is new in that version.
 - **A banner appears at the top** as soon as a new version has been downloaded and is ready: *“A new version of ElevenSpark is ready… Tap to update.”* Tap **Update now** and the app reloads with the new code.
 - The **question bank** re-seeds itself whenever `QUESTION_BANK_VERSION` changes, so a new version also means new questions.

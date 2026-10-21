@@ -110,7 +110,7 @@ export function AppShell({ screen, onNavigate, children }: AppShellProps) {
           className="flex min-w-0 items-center gap-2 md:w-64 md:shrink-0"
         >
           <ElevenSparkLogo className="h-8 w-auto shrink-0 md:h-9" />
-          <span className="min-w-0">
+          <span className="hidden min-w-0 min-[400px]:block">
             <span className="block truncate text-base font-black leading-tight text-slate-900">ElevenSpark</span>
             <span className="hidden text-xs font-bold leading-tight text-slate-500 md:block">
               Gloucestershire 11+
