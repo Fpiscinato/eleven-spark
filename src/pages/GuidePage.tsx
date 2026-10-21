@@ -80,9 +80,9 @@ export function GuidePage({ onNavigate }: GuidePageProps) {
             accentClass="bg-indigo-100 text-indigo-700"
           >
             <p>
-              Pick a subject (English, Verbal Reasoning, Maths or Non-Verbal Reasoning), choose how many
-              questions you want, and answer at your own pace. You get friendly feedback after every
-              question, with the explanation written out for you.
+              Pick a subject (English, Maths or Compass), choose how many questions you want, and answer
+              at your own pace. You get friendly feedback after every question, with the explanation
+              written out for you.
             </p>
             <p>
               Every question has five options: A, B, C, D and E. Always pick the one you think is best —
@@ -109,9 +109,10 @@ export function GuidePage({ onNavigate }: GuidePageProps) {
             accentClass="bg-amber-100 text-amber-800"
           >
             <p>
-              The Mock screen is your real exam practice. Paper 1 is English first, then Verbal
-              Reasoning. Paper 2 is Non-Verbal &amp; Spatial Reasoning first, then Maths. Each half has
-              its own timer.
+              The Mock screen is your real exam practice. The <strong>Adventure Paper</strong> is English
+              first, then Maths. The <strong>Beacon Paper</strong> asks for written answers typed into
+              the boxes. The <strong>Compass Paper</strong> works right across the curriculum. Each half
+              has its own timer.
             </p>
             <p>
               <strong>Section lock:</strong> once you finish Section A (or the timer runs out) you move
@@ -131,7 +132,7 @@ export function GuidePage({ onNavigate }: GuidePageProps) {
           >
             <p>• Read the whole question twice before looking at the options.</p>
             <p>• In maths, check the sign and the units — that is where easy marks are lost.</p>
-            <p>• In NVR, find what changes first (shape, rotation, colour), then check the pattern.</p>
+            <p>• On the Compass Paper, read every table, chart and diagram before you answer.</p>
             <p>• Never leave a question empty: there is no negative marking.</p>
             <p>• If you are stuck, flag it, pick your best guess, and come back if there is time.</p>
           </SectionCard>
@@ -154,16 +155,19 @@ export function GuidePage({ onNavigate }: GuidePageProps) {
           >
             <p>
               The entrance test for Gloucestershire grammar schools (Pate's, Stroud High, Ribston Hall,
-              Denmark Road and The Crypt) is a two-paper GL Assessment test of about 50 minutes per
-              paper.
+              Denmark Road and The Crypt) is the G7 FSCE — three papers of about 50 minutes each.
             </p>
             <p>
-              <strong>Paper 1:</strong> Section A — English comprehension, spelling, punctuation and
-              best word; Section B — Verbal Reasoning.
+              <strong>Adventure Paper:</strong> Section A — English comprehension, spelling, punctuation
+              and best word; Section B — KS2 Maths. Both sections are multiple choice with five options.
             </p>
             <p>
-              <strong>Paper 2:</strong> Section A — Non-Verbal &amp; Spatial Reasoning; Section B —
-              KS2 Year 6 Maths.
+              <strong>Beacon Paper:</strong> written answers in the boxes — Section A English, Section B
+              Maths. Numbers and words are typed in before the answer is revealed.
+            </p>
+            <p>
+              <strong>Compass Paper:</strong> Across the Curriculum — logical interpretation that pulls
+              together science, history, geography, computing, arts, design, music and languages.
             </p>
             <p>
               Sections are strictly timed and locked: finishing Section A (or running out of time) moves

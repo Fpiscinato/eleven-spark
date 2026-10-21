@@ -453,7 +453,7 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
             <div>
               <h2 className="text-lg font-black text-slate-900">Mock score over time</h2>
               <p className="text-xs font-bold text-slate-500">
-                Every completed Paper 1, Paper 2 and Mini-Mock
+                Every completed Adventure, Beacon, Compass and Mini-Mock paper
               </p>
             </div>
           </div>

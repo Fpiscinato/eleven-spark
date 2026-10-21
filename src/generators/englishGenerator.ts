@@ -4,7 +4,14 @@ import { createRng, hashSeed } from './rng'
 
 const BASE_SEED = 20261020
 
-type EnglishTopic = 'comprehension' | 'vocabulary' | 'word_classes' | 'spelling' | 'punctuation' | 'best_word'
+type EnglishTopic =
+  | 'comprehension'
+  | 'vocabulary'
+  | 'word_classes'
+  | 'spelling'
+  | 'punctuation'
+  | 'best_word'
+  | 'cloze'
 
 interface QuestionSpec {
   topic: EnglishTopic
@@ -1070,6 +1077,55 @@ const STANDALONE_SPECS: readonly QuestionSpec[] = [
     explanation: 'If you add salt and pepper, the soup must have tasted bland — with hardly any flavour.',
     timeTargetSeconds: 25,
   },
+
+  {
+    topic: 'cloze',
+    stem: 'The farmer counted the sheep and wrote the number in his notebook.',
+    options: ['number', 'numbers', 'numbering', 'numbered', 'numeral'],
+    correctIndex: 0,
+    explanation: 'You write a number in a notebook, so the missing word is "number".',
+    timeTargetSeconds: 20,
+  },
+  {
+    topic: 'cloze',
+    stem: 'Sam packed his sandwiches, an apple and a bottle of juice into his bag.',
+    options: ['juice', 'juices', 'juicing', 'juiced', 'juicer'],
+    correctIndex: 0,
+    explanation: 'A bottle holds juice, so the missing word is "juice".',
+    timeTargetSeconds: 20,
+  },
+  {
+    topic: 'cloze',
+    stem: 'The rain was so heavy that the children could not go to play outside.',
+    options: ['play', 'plays', 'playing', 'played', 'playful'],
+    correctIndex: 0,
+    explanation: 'After "to" we need the base verb, so the missing word is "play".',
+    timeTargetSeconds: 20,
+  },
+  {
+    topic: 'cloze',
+    stem: 'The little bird sang a sweet song from the branch of the old tree.',
+    options: ['branch', 'branches', 'branching', 'branched', 'branchy'],
+    correctIndex: 0,
+    explanation: 'A bird can sit on one branch, so the missing word is "branch".',
+    timeTargetSeconds: 20,
+  },
+  {
+    topic: 'cloze',
+    stem: 'Please put your dirty shoes in the garden box before you come inside.',
+    options: ['box', 'boxes', 'boxing', 'boxed', 'boxs'],
+    correctIndex: 0,
+    explanation: 'A box is a single container, so the missing word is "box".',
+    timeTargetSeconds: 20,
+  },
+  {
+    topic: 'cloze',
+    stem: 'Our class is going to the museum on Tuesday next month.',
+    options: ['Tuesday', 'Tuesdays', 'Tuesdaying', 'Tuesdayed', 'Tues'],
+    correctIndex: 0,
+    explanation: 'A single day of the week is written as "Tuesday".',
+    timeTargetSeconds: 20,
+  },
 ]
 
 function difficultyFor(index: number): Difficulty {
@@ -1108,6 +1164,8 @@ export function generateEnglishQuestions(nonce: string): EnglishQuestionBank {
 
   STANDALONE_SPECS.forEach((questionSpec) => {
     const rng = createRng(hashSeed(BASE_SEED, 'english', nonce, runningIndex))
+    const written = questionSpec.topic === 'spelling' || questionSpec.topic === 'cloze'
+    const correctText = questionSpec.options[questionSpec.correctIndex ?? 0] ?? ''
     const question = buildQuestion(rng, 'english', makeQuestionId(nonce, 'english', questionSpec.topic, runningIndex), {
       topic: questionSpec.topic,
       difficulty: difficultyFor(runningIndex),
@@ -1116,6 +1174,8 @@ export function generateEnglishQuestions(nonce: string): EnglishQuestionBank {
       correctIndex: questionSpec.correctIndex ?? 0,
       explanation: questionSpec.explanation,
       timeTargetSeconds: questionSpec.timeTargetSeconds,
+      answerType: written ? 'short_text' : undefined,
+      acceptedAnswers: written ? [correctText] : undefined,
     })
     questions.push(question)
     runningIndex += 1

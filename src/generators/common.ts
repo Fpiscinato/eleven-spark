@@ -11,6 +11,8 @@ export interface QuestionDraft {
   timeTargetSeconds: number
   svgConfig?: SvgConfig
   passageId?: string
+  answerType?: 'mcq' | 'short_text'
+  acceptedAnswers?: string[]
 }
 
 export type OptionTuple = [string, string, string, string, string]
@@ -125,6 +127,15 @@ export function buildQuestion(
     timeTargetSeconds: draft.timeTargetSeconds,
   }
   if (draft.passageId !== undefined) question.passageId = draft.passageId
+  if (draft.answerType === 'short_text') {
+    const correctText = optionTexts[draft.correctIndex]?.trim() ?? ''
+    const provided = (draft.acceptedAnswers ?? [])
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0)
+    const accepted = provided.length > 0 ? provided : correctText.length > 0 ? [correctText] : []
+    question.answerType = 'short_text'
+    question.acceptedAnswers = accepted.length > 0 ? accepted : [correctText]
+  }
   if (draft.svgConfig !== undefined) {
     if (optionFigures !== undefined) {
       question.svgConfig = {

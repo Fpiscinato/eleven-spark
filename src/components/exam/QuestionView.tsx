@@ -2,6 +2,7 @@ import { BookOpen, Check, Flag, Lightbulb, PencilLine, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { OPTION_LETTERS, type Passage, type Question } from '../../db/schemas'
 import { getTopicStrategy } from '../../data/topicStrategies'
+import { acceptedAnswersFor } from '../../lib/writtenAnswer'
 import { MathText } from './MathText'
 import { NvrFigureSvg, NvrSvgRenderer } from './NvrSvgRenderer'
 import { ScratchpadOverlay } from './ScratchpadOverlay'
@@ -174,6 +175,76 @@ function OptionsList({ question, selectedIndex, onSelect, disabled, showFeedback
   )
 }
 
+interface WrittenAnswerBoxProps {
+  question: Question
+  value: string
+  onChange: (value: string) => void
+  onSubmit: (value: string) => void
+  locked: boolean
+  showFeedback: boolean
+}
+
+function WrittenAnswerBox({
+  question,
+  value,
+  onChange,
+  onSubmit,
+  locked,
+  showFeedback,
+}: WrittenAnswerBoxProps) {
+  const accepted = acceptedAnswersFor(question)
+  const trimmed = value.trim()
+
+  return (
+    <div className="rounded-2xl border-2 border-dashed border-indigo-300 bg-indigo-50 p-4">
+      <p className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-indigo-700">
+        <PencilLine className="h-5 w-5" aria-hidden="true" />
+        Beacon Written Answer
+      </p>
+      <p className="mt-1 text-sm font-semibold text-slate-600">
+        Type your answer in the box. The correct answer is only revealed once you have checked it.
+      </p>
+      <label htmlFor="beacon-written-answer" className="sr-only">
+        Your written answer
+      </label>
+      <input
+        id="beacon-written-answer"
+        type="text"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && trimmed !== '' && !locked) {
+            event.preventDefault()
+            onSubmit(value)
+          }
+        }}
+        disabled={locked}
+        autoComplete="off"
+        autoCapitalize="none"
+        spellCheck={false}
+        placeholder="Type your answer here"
+        className="mt-3 min-h-[56px] w-full rounded-2xl border-2 border-slate-300 bg-white px-4 py-3 text-lg font-bold text-slate-900 focus:border-indigo-500 focus:outline-none disabled:opacity-70"
+      />
+      {!locked ? (
+        <button
+          type="button"
+          onClick={() => onSubmit(value)}
+          disabled={trimmed === ''}
+          className="mt-3 inline-flex min-h-[48px] items-center gap-2 rounded-2xl border-2 border-indigo-600 bg-indigo-600 px-5 py-2 text-sm font-extrabold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Check className="h-5 w-5" aria-hidden="true" />
+          Check my answer
+        </button>
+      ) : null}
+      {showFeedback ? (
+        <div className="mt-3 rounded-2xl border-2 border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-800">
+          Correct answer: {accepted.join(' · ')}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export interface QuestionViewProps {
   question: Question
   passage?: Passage | undefined
@@ -186,6 +257,10 @@ export interface QuestionViewProps {
   showStrategy?: boolean
   flagged?: boolean
   onToggleFlag?: (() => void) | undefined
+  writtenMode?: boolean
+  writtenAnswer?: string | null
+  onWriteAnswer?: ((value: string) => void) | undefined
+  onWrittenChange?: ((value: string) => void) | undefined
 }
 
 function StrategyPanel({ question }: { question: Question }) {
@@ -232,13 +307,25 @@ export function QuestionView({
   showStrategy = false,
   flagged = false,
   onToggleFlag,
+  writtenMode = false,
+  writtenAnswer = null,
+  onWriteAnswer,
+  onWrittenChange,
 }: QuestionViewProps) {
   const [scratchOpen, setScratchOpen] = useState(false)
   const [passageWidth, setPassageWidth] = useState(480)
   const [fontVersion, setFontVersion] = useState(0)
   const [mobileView, setMobileView] = useState<'question' | 'text'>('question')
   const [strategyOpen, setStrategyOpen] = useState(false)
+  const [writtenDraft, setWrittenDraft] = useState('')
   const passageBoxRef = useRef<HTMLDivElement>(null)
+  const onWrittenChangeRef = useRef(onWrittenChange)
+  onWrittenChangeRef.current = onWrittenChange
+  const isWritten = writtenMode && question.answerType === 'short_text'
+
+  useEffect(() => {
+    setWrittenDraft(writtenAnswer ?? '')
+  }, [question.id, writtenAnswer])
 
   useEffect(() => {
     let cancelled = false
@@ -367,13 +454,27 @@ export function QuestionView({
               <div className="whitespace-pre-line text-lg font-bold leading-relaxed text-slate-900">
                 <MathText text={question.stem} />
               </div>
-              <OptionsList
-                question={question}
-                selectedIndex={selectedIndex}
-                onSelect={onSelect}
-                disabled={locked}
-                showFeedback={showFeedback}
-              />
+              {isWritten && onWriteAnswer ? (
+                <WrittenAnswerBox
+                  question={question}
+                  value={writtenDraft}
+                  onChange={(value) => {
+                    setWrittenDraft(value)
+                    onWrittenChangeRef.current?.(value)
+                  }}
+                  onSubmit={onWriteAnswer}
+                  locked={locked}
+                  showFeedback={showFeedback}
+                />
+              ) : (
+                <OptionsList
+                  question={question}
+                  selectedIndex={selectedIndex}
+                  onSelect={onSelect}
+                  disabled={locked}
+                  showFeedback={showFeedback}
+                />
+              )}
               {showStrategy && locked ? (
                 <div>
                   <button
@@ -401,13 +502,27 @@ export function QuestionView({
           <div className="whitespace-pre-line text-lg font-bold leading-relaxed text-slate-900 md:text-xl">
             <MathText text={question.stem} />
           </div>
-          <OptionsList
-            question={question}
-            selectedIndex={selectedIndex}
-            onSelect={onSelect}
-            disabled={locked}
-            showFeedback={showFeedback}
-          />
+          {isWritten && onWriteAnswer ? (
+            <WrittenAnswerBox
+              question={question}
+              value={writtenDraft}
+              onChange={(value) => {
+                setWrittenDraft(value)
+                onWrittenChangeRef.current?.(value)
+              }}
+              onSubmit={onWriteAnswer}
+              locked={locked}
+              showFeedback={showFeedback}
+            />
+          ) : (
+            <OptionsList
+              question={question}
+              selectedIndex={selectedIndex}
+              onSelect={onSelect}
+              disabled={locked}
+              showFeedback={showFeedback}
+            />
+          )}
           {showStrategy && locked ? (
             <div>
               <button

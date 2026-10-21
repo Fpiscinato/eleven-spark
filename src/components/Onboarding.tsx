@@ -80,7 +80,7 @@ export function Onboarding({ onComplete }: { onComplete: () => void }) {
             <div className="flex flex-col gap-4">
               <p className="text-base font-semibold leading-relaxed text-slate-700">
                 Friendly practice and realistic mock exams for the Gloucestershire Grammar Schools test —
-                English, Verbal Reasoning, Maths and Non-Verbal Reasoning.
+                English, Maths and Compass, plus an optional Brain Gym for extra logic practice.
               </p>
               <ul className="flex flex-col gap-2 text-sm font-bold text-slate-600">
                 <li className="flex items-center gap-2">

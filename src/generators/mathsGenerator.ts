@@ -70,6 +70,8 @@ function fractionOfQuestion(rng: Rng, index: number, nonce: string): Question {
     stem: `What is $\\frac{${numerator}}{${denominator}}$ of $${amount}$?`,
     options: dedupedOptions(String(answer), near.map(String)),
     correctIndex: 0,
+    answerType: 'short_text',
+    acceptedAnswers: [String(answer)],
     explanation: `"Of" means multiply. First divide $${amount}$ into ${denominator} equal parts: $${amount} \\div ${denominator} = ${amount / denominator}$. Then take ${numerator} of those parts: $${amount / denominator} \\times ${numerator} = ${answer}$.`,
     timeTargetSeconds: 45,
   })
@@ -684,15 +686,24 @@ function journeyDurationQuestion(rng: Rng, index: number, nonce: string): Questi
   const endTotal = startTotal + duration
   const format = (total: number): string =>
     `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
+  const hours = Math.floor(duration / 60)
+  const minutes = duration % 60
+  const writtenAnswers = [
+    hours > 0 ? `${hours} h ${minutes} min` : `${duration} min`,
+    hours > 0 ? `${hours} hour${hours === 1 ? '' : 's'} ${minutes} minute${minutes === 1 ? '' : 's'}` : `${duration} minutes`,
+    hours > 0 ? `${hours}h ${minutes}m` : `${duration}m`,
+  ]
   return buildQuestion(rng, 'maths', makeQuestionId(nonce, 'maths', 'timetables_speed', index), {
     topic: 'timetables_speed',
     difficulty: 2,
     stem: `A train leaves Bristol at ${format(startTotal)} and arrives in Gloucester at ${format(endTotal)}.\n\nHow long does the journey take?`,
     options: dedupedOptions(
-      `${Math.floor(duration / 60) > 0 ? `${Math.floor(duration / 60)} h ${duration % 60} min` : `${duration} min`}`,
+      `${hours > 0 ? `${hours} h ${minutes} min` : `${duration} min`}`,
       [`${duration + 10} min`, `${duration - 10 > 0 ? duration - 10 : 5} min`, `${duration + 30} min`, `${duration + 45} min`, `${duration + 5} min`],
     ),
     correctIndex: 0,
+    answerType: 'short_text',
+    acceptedAnswers: writtenAnswers,
     explanation: `From ${format(startTotal)} to ${format(endTotal)} is ${Math.floor(duration / 60)} hour${duration >= 60 ? 's' : ''} and ${duration % 60} minutes — ${duration} minutes in total.`,
     timeTargetSeconds: 60,
   })

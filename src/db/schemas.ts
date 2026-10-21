@@ -1,8 +1,28 @@
 import { z } from 'zod'
 
-export const SUBJECTS = ['english', 'vr', 'maths', 'nvr'] as const
+export const SUBJECTS = ['english', 'maths', 'compass', 'vr', 'nvr'] as const
 export const subjectSchema = z.enum(SUBJECTS)
 export type Subject = z.infer<typeof subjectSchema>
+
+export const CORE_SUBJECTS = ['english', 'maths', 'compass'] as const
+export type CoreSubject = (typeof CORE_SUBJECTS)[number]
+
+export const OPTIONAL_SUBJECTS = ['vr', 'nvr'] as const
+export type OptionalSubject = (typeof OPTIONAL_SUBJECTS)[number]
+
+export const OPTIONAL_SUBJECT_REASON = 'Bonus Logic Gym - Not required for Glos FSCE'
+
+export const SUBJECT_OPTIONAL: Record<Subject, boolean> = {
+  english: false,
+  maths: false,
+  compass: false,
+  vr: true,
+  nvr: true,
+}
+
+export function isOptionalSubject(subject: Subject): boolean {
+  return SUBJECT_OPTIONAL[subject]
+}
 
 export const difficultySchema = z.union([z.literal(1), z.literal(2), z.literal(3)])
 export type Difficulty = z.infer<typeof difficultySchema>
@@ -12,6 +32,7 @@ export const SESSION_MODES = [
   'mistake_clinic',
   'mock_paper_1',
   'mock_paper_2',
+  'mock_paper_3',
   'mini_mock',
 ] as const
 export const sessionModeSchema = z.enum(SESSION_MODES)
@@ -90,6 +111,9 @@ export const svgConfigSchema = z.object({
 })
 export type SvgConfig = z.infer<typeof svgConfigSchema>
 
+export const answerTypeSchema = z.enum(['mcq', 'short_text'])
+export type AnswerType = z.infer<typeof answerTypeSchema>
+
 export const questionSchema = z.object({
   id: z.string().min(1),
   subject: subjectSchema,
@@ -102,6 +126,8 @@ export const questionSchema = z.object({
   correctIndex: z.number().int().min(0).max(4),
   explanation: z.string().min(1),
   timeTargetSeconds: z.number().int().positive(),
+  answerType: answerTypeSchema.optional(),
+  acceptedAnswers: z.array(z.string().min(1)).max(8).optional(),
 })
 export type Question = z.infer<typeof questionSchema>
 
@@ -133,6 +159,7 @@ export const sessionSchema = z.object({
   totalTimeSeconds: z.number().min(0),
   scorePercentage: z.number().min(0).max(100),
   sectionBreakdown: z.array(sectionBreakdownEntrySchema),
+  writtenMode: z.boolean().optional(),
 })
 export type Session = z.infer<typeof sessionSchema>
 
@@ -145,6 +172,7 @@ export const attemptSchema = z.object({
   topic: z.string(),
   difficulty: difficultySchema,
   selectedIndex: z.number().int().min(0).max(4).nullable(),
+  writtenAnswer: z.string().optional(),
   isCorrect: z.boolean(),
   timeSpentSeconds: z.number().min(0),
   flagged: z.boolean(),

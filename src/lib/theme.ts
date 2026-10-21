@@ -1,4 +1,4 @@
-import { BookOpen, Calculator, MessagesSquare, Shapes, type LucideIcon } from 'lucide-react'
+import { BookOpen, Calculator, Compass, MessagesSquare, Shapes, type LucideIcon } from 'lucide-react'
 import type { Subject } from '../db/schemas'
 
 export interface SubjectMeta {
@@ -8,6 +8,7 @@ export interface SubjectMeta {
   badgeClass: string
   barClass: string
   tileClass: string
+  isOptional: boolean
 }
 
 export const SUBJECT_META: Record<Subject, SubjectMeta> = {
@@ -18,14 +19,16 @@ export const SUBJECT_META: Record<Subject, SubjectMeta> = {
     badgeClass: 'border-sky-200 bg-sky-100 text-sky-800',
     barClass: 'bg-sky-500',
     tileClass: 'border-sky-200 hover:border-sky-500 hover:bg-sky-50',
+    isOptional: false,
   },
   vr: {
-    label: 'Verbal Reasoning',
+    label: 'Verbal Reasoning Puzzles (VR)',
     short: 'VR',
     icon: MessagesSquare,
     badgeClass: 'border-violet-200 bg-violet-100 text-violet-800',
     barClass: 'bg-violet-500',
     tileClass: 'border-violet-200 hover:border-violet-500 hover:bg-violet-50',
+    isOptional: true,
   },
   maths: {
     label: 'Maths',
@@ -34,14 +37,25 @@ export const SUBJECT_META: Record<Subject, SubjectMeta> = {
     badgeClass: 'border-emerald-200 bg-emerald-100 text-emerald-800',
     barClass: 'bg-emerald-500',
     tileClass: 'border-emerald-200 hover:border-emerald-500 hover:bg-emerald-50',
+    isOptional: false,
+  },
+  compass: {
+    label: 'Compass (Across the Curriculum)',
+    short: 'Co',
+    icon: Compass,
+    badgeClass: 'border-teal-200 bg-teal-100 text-teal-800',
+    barClass: 'bg-teal-500',
+    tileClass: 'border-teal-200 hover:border-teal-500 hover:bg-teal-50',
+    isOptional: false,
   },
   nvr: {
-    label: 'Non-Verbal Reasoning',
+    label: 'Non-Verbal Reasoning (NVR)',
     short: 'NVR',
     icon: Shapes,
     badgeClass: 'border-amber-200 bg-amber-100 text-amber-900',
     barClass: 'bg-amber-500',
     tileClass: 'border-amber-200 hover:border-amber-500 hover:bg-amber-50',
+    isOptional: true,
   },
 }
 

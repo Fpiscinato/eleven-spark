@@ -126,7 +126,7 @@ export interface ResetResult {
   sessionsKept: number
 }
 
-const MOCK_MODES: readonly SessionMode[] = ['mock_paper_1', 'mock_paper_2', 'mini_mock']
+const MOCK_MODES: readonly SessionMode[] = ['mock_paper_1', 'mock_paper_2', 'mock_paper_3', 'mini_mock']
 
 /**
  * A finished mock paper is the child's official exam record, so it can never

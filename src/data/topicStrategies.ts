@@ -34,6 +34,17 @@ const SUBJECT_FALLBACK: Record<Subject, TopicStrategy> = {
       'Check the answer makes sense in real life.',
     ],
   },
+  compass: {
+    attention:
+      'The Compass Paper is about reading carefully and working things out from the information on the page. Every answer can be proved from the table, the diagram, the rule or the text in front of you.',
+    trap:
+      'Guessing from general knowledge instead of using the data you were given, or misreading which row or column the question is about.',
+    steps: [
+      'Read the question twice and find the rule, table or diagram it uses.',
+      'Find the exact row, column or step the question is asking about.',
+      'Check your answer against the information on the page before you choose.',
+    ],
+  },
   nvr: {
     attention: 'Use S.P.A.N.S.: Shape, Position, Angle, Number, Shading. Check one letter at a time until the pattern clicks.',
     trap: 'Following the first pattern you see when the picture actually changes in two ways at once.',

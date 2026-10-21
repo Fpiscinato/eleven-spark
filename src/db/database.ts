@@ -64,6 +64,13 @@ export class ElevenSparkDB extends Dexie {
       sessions: 'id, profileId, status, mode, startedAt',
       attempts: 'id, profileId, sessionId, questionId, subject, timestamp',
     })
+    this.version(5).stores({
+      profiles: 'id, createdAt, updatedAt',
+      questions: 'id, subject, topic, difficulty, passageId',
+      passages: 'id, title',
+      sessions: 'id, profileId, status, mode, startedAt',
+      attempts: 'id, profileId, sessionId, questionId, subject, timestamp',
+    })
   }
 }
 

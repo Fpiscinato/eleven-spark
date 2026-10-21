@@ -22,6 +22,7 @@ import {
   cardClass,
 } from '../components/ui'
 import { db } from '../db/database'
+import { CORE_SUBJECTS } from '../db/schemas'
 import type { Attempt, Passage, Question, SectionBreakdownEntry } from '../db/schemas'
 import {
   EXAM_CONFIGS,
@@ -32,6 +33,7 @@ import {
   type ExamMode,
 } from '../lib/exam'
 import { formatClock, formatMinutes, uid } from '../lib/format'
+import { isWrittenAnswerCorrect } from '../lib/writtenAnswer'
 import { abandonSession, completeSession, startSession } from '../lib/sessionHelpers'
 import {
   readSession,
@@ -67,6 +69,7 @@ interface ReportDetail {
   question: Question
   sectionIndex: number
   selectedIndex: number | null
+  writtenAnswer?: string
   isCorrect: boolean
   timeSeconds: number
   flagged: boolean
@@ -92,7 +95,7 @@ interface Engine {
   passagesById: Map<string, Passage>
   sectionIndex: number
   cursor: number
-  answers: Record<string, number | null>
+  answers: Record<string, number | string | null>
   flags: Record<string, boolean>
   timeUsedBySection: number[]
   startedAt: number
@@ -149,7 +152,7 @@ async function loadSectionsForConfig(config: ExamConfig): Promise<{
   passagesById: Map<string, Passage>
 }> {
   if (config.mode === 'mini_mock') {
-    const { questions, passagesById } = await loadQuestionsForSubjects(['english', 'vr', 'maths', 'nvr'])
+    const { questions, passagesById } = await loadQuestionsForSubjects(CORE_SUBJECTS)
     const mixed = shuffleQuestions(questions)
     const firstCount = config.sections[0]?.questionCount ?? 12
     const secondCount = config.sections[1]?.questionCount ?? 12
@@ -233,7 +236,7 @@ function OmrSheetOverlay({ mode, onSelectMode, onClose }: OmrSheetOverlayProps) 
       <div className="omr-print-area mx-auto my-6 w-full max-w-[860px] border border-[#cbd5e1] bg-[#ffffff] p-6 shadow-xl md:p-10">
         <header className="mb-5 border-b-2 border-[#0f172a] pb-4">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#475569]">
-            ElevenSpark practice sheet · GL Assessment format
+            ElevenSpark practice sheet · G7 FSCE format
           </p>
           <h1 className="mt-1 text-xl font-black text-[#0f172a]">{config.title} — Answer Sheet</h1>
           <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-sm font-bold text-[#0f172a]">
@@ -561,21 +564,24 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
 
   useEffect(() => {
     void (async () => {
-      const [englishCount, vrCount, nvrCount, mathsCount, allCount] = await Promise.all([
+      const [englishCount, , , mathsCount, compassCount, allCount] = await Promise.all([
         db.questions.where('subject').equals('english').count(),
         db.questions.where('subject').equals('vr').count(),
         db.questions.where('subject').equals('nvr').count(),
         db.questions.where('subject').equals('maths').count(),
+        db.questions.where('subject').equals('compass').count(),
         db.questions.count(),
       ])
       const available: Record<ExamMode, number[]> = {
-        mock_paper_1: [englishCount, vrCount],
-        mock_paper_2: [nvrCount, mathsCount],
+        mock_paper_1: [englishCount, mathsCount],
+        mock_paper_2: [englishCount, mathsCount],
+        mock_paper_3: [compassCount],
         mini_mock: [allCount, allCount],
       }
       const counts: Record<ExamMode, number[]> = {
         mock_paper_1: [],
         mock_paper_2: [],
+        mock_paper_3: [],
         mini_mock: [],
       }
       for (const mode of EXAM_MODES) {
@@ -642,8 +648,13 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
       sectionQuestions.forEach((questions, sectionIndex) => {
         let sectionCorrect = 0
         questions.forEach((question) => {
-          const selectedIndex = finalEngine.answers[question.id] ?? null
-          const isCorrect = selectedIndex === question.correctIndex
+          const rawAnswer = finalEngine.answers[question.id] ?? null
+          const writtenAnswer = typeof rawAnswer === 'string' ? rawAnswer : undefined
+          const selectedIndex = typeof rawAnswer === 'number' ? rawAnswer : null
+          const isCorrect =
+            writtenAnswer !== undefined
+              ? isWrittenAnswerCorrect(question, writtenAnswer)
+              : selectedIndex === question.correctIndex
           const timeSeconds = Math.round(timeSpentRef.current[question.id] ?? 0)
           const flagged = finalEngine.flags[question.id] === true
           if (isCorrect) {
@@ -651,7 +662,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
             sectionCorrect += 1
           }
           total += 1
-          details.push({ question, sectionIndex, selectedIndex, isCorrect, timeSeconds, flagged })
+          details.push({ question, sectionIndex, selectedIndex, writtenAnswer, isCorrect, timeSeconds, flagged })
           attempts.push({
             id: uid(),
             profileId: finalEngine.profileId,
@@ -661,6 +672,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
             topic: question.topic,
             difficulty: question.difficulty,
             selectedIndex,
+            writtenAnswer,
             isCorrect,
             timeSpentSeconds: timeSeconds,
             flagged,
@@ -874,6 +886,20 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
       return {
         ...current,
         answers: { ...current.answers, [question.id]: optionIndex },
+      }
+    })
+  }, [])
+
+  const submitWrittenAnswer = useCallback((value: string) => {
+    const trimmed = value.trim()
+    if (trimmed === '') return
+    setEngine((current) => {
+      if (!current) return current
+      const question = current.sectionQuestions[current.sectionIndex]?.[current.cursor]
+      if (!question) return current
+      return {
+        ...current,
+        answers: { ...current.answers, [question.id]: trimmed },
       }
     })
   }, [])
@@ -1201,7 +1227,9 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
                         </span>
                       ) : null}
                       <span className="text-xs font-bold text-rose-600">
-                        Your answer: {letterOf(detail.selectedIndex)}
+                        {detail.writtenAnswer !== undefined
+                          ? `Your answer: ${detail.writtenAnswer}`
+                          : `Your answer: ${letterOf(detail.selectedIndex)}`}
                       </span>
                       <span className="text-xs font-bold text-emerald-700">
                         Correct: {letterOf(detail.question.correctIndex)}
@@ -1402,10 +1430,15 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
         passage={passage}
         questionNumber={engine.cursor + 1}
         totalQuestions={sectionQuestionsList.length}
-        selectedIndex={engine.answers[question.id] ?? null}
+        selectedIndex={
+          typeof engine.answers[question.id] === 'number' ? (engine.answers[question.id] as number) : null
+        }
         onSelect={selectAnswer}
         flagged={engine.flags[question.id] === true}
         onToggleFlag={toggleFlag}
+        writtenMode={sectionConfig.writtenMode === true}
+        onWriteAnswer={(value) => submitWrittenAnswer(value)}
+        onWrittenChange={(value) => submitWrittenAnswer(value)}
       />
 
       <div className="flex justify-between gap-3">

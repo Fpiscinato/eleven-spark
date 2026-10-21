@@ -1,4 +1,5 @@
 import type { Passage, Question, Subject } from '../db/schemas'
+import { generateCompassQuestions } from './compassGenerator'
 import { generateEnglishQuestions } from './englishGenerator'
 import { generateMathsQuestions } from './mathsGenerator'
 import { generateNvrQuestions } from './nvrGenerator'
@@ -14,9 +15,10 @@ export function generateQuestionBank(nonce: string): QuestionBank {
   const vr = generateVrQuestions(nonce)
   const maths = generateMathsQuestions(nonce)
   const nvr = generateNvrQuestions(nonce)
+  const compass = generateCompassQuestions(nonce)
   return {
     passages: english.passages,
-    questions: [...english.questions, ...vr, ...maths, ...nvr],
+    questions: [...english.questions, ...vr, ...maths, ...nvr, ...compass],
   }
 }
 
@@ -46,7 +48,7 @@ export function generateFreshBatch(count: number): QuestionBank {
     }
   }
 
-  const subjects: Subject[] = ['english', 'vr', 'maths', 'nvr']
+  const subjects: Subject[] = ['english', 'maths', 'compass', 'vr', 'nvr']
   const picked: Question[] = []
   let round = 0
   while (picked.length < count) {

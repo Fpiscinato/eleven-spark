@@ -19,7 +19,11 @@ export function getMistakesClearedAt(profileId: string): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
 }
 
-export async function startSession(mode: SessionMode, profileId: string): Promise<string> {
+export async function startSession(
+  mode: SessionMode,
+  profileId: string,
+  options?: { writtenMode?: boolean },
+): Promise<string> {
   const id = uid()
   await db.sessions.add({
     id,
@@ -31,6 +35,7 @@ export async function startSession(mode: SessionMode, profileId: string): Promis
     totalTimeSeconds: 0,
     scorePercentage: 0,
     sectionBreakdown: [],
+    writtenMode: options?.writtenMode === true ? true : undefined,
   })
   return id
 }

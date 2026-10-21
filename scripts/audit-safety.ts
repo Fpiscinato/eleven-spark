@@ -1,5 +1,6 @@
-import type { NvrFigure, Passage, Question } from '../src/db/schemas'
+import type { NvrFigure, Passage, Question, Subject } from '../src/db/schemas'
 import { generateQuestionBank, generateFreshBatch } from '../src/generators'
+import { COMPASS_TOPICS } from '../src/generators/compassGenerator'
 import {
   findUnsafeCodeFragment,
   isCodeSafe,
@@ -143,6 +144,51 @@ function checkOddOneOut(question: Question, figures: NvrFigure[], issues: Integr
   })
 }
 
+function checkBeaconWritten(question: Question, issues: IntegrityIssue[]): void {
+  if (question.answerType === 'short_text') {
+    const accepted = question.acceptedAnswers ?? []
+    if (accepted.length === 0) {
+      issues.push({ id: question.id, reason: 'written question has no acceptedAnswers' })
+      return
+    }
+    const correctText = question.options[question.correctIndex]?.trim() ?? ''
+    const normalised = accepted.map((entry) => entry.trim().toLowerCase())
+    if (!normalised.includes(correctText.toLowerCase())) {
+      issues.push({
+        id: question.id,
+        reason: `written question does not accept its own correct answer ("${correctText}")`,
+      })
+    }
+    const seen = new Set<string>()
+    for (const entry of accepted) {
+      const key = entry.trim().toLowerCase()
+      if (key.length === 0) {
+        issues.push({ id: question.id, reason: 'written question has a blank accepted answer' })
+        continue
+      }
+      if (seen.has(key)) {
+        issues.push({ id: question.id, reason: `written question repeats the accepted answer "${entry}"` })
+      }
+      seen.add(key)
+    }
+  } else if (question.acceptedAnswers !== undefined) {
+    issues.push({ id: question.id, reason: 'acceptedAnswers set without answerType short_text' })
+  }
+}
+
+function checkCompassTopic(question: Question, issues: IntegrityIssue[]): void {
+  if (question.subject !== 'compass') return
+  if (!(COMPASS_TOPICS as readonly string[]).includes(question.topic)) {
+    issues.push({ id: question.id, reason: `unknown compass topic "${question.topic}"` })
+  }
+  if (question.options.length !== 5) {
+    issues.push({ id: question.id, reason: `compass question has ${question.options.length} options` })
+  }
+  if (question.explanation.trim().length === 0) {
+    issues.push({ id: question.id, reason: 'compass question has no explanation' })
+  }
+}
+
 function collectCodeFragments(text: string): string[] {
   const tokens = text.match(/[A-Z]{3,}/g) ?? []
   return tokens
@@ -191,6 +237,7 @@ function auditBank(
   violations: Violation[],
   integrity: IntegrityIssue[],
   notes: Note[],
+  collected: Question[],
 ): void {
   for (const passage of passages) {
     const result = validatePassage(passage)
@@ -206,6 +253,8 @@ function auditBank(
   for (const question of questions) {
     checkIntegrity(question, integrity, notes)
     checkVrCodes(question, integrity)
+    checkBeaconWritten(question, integrity)
+    checkCompassTopic(question, integrity)
     const result = validateQuestion(question)
     for (const violation of result.violations) {
       violations.push({
@@ -216,6 +265,7 @@ function auditBank(
       })
     }
   }
+  collected.push(...questions)
   process.stdout.write(`  ${label}: ${questions.length} questions, ${passages.length} passages\n`)
 }
 
@@ -223,6 +273,7 @@ function main(): void {
   const violations: Violation[] = []
   const integrity: IntegrityIssue[] = []
   const notes: Note[] = []
+  const allQuestions: Question[] = []
   let totalQuestions = 0
   let totalPassages = 0
 
@@ -230,7 +281,7 @@ function main(): void {
   process.stdout.write('==================================================\n\n')
   process.stdout.write('Static bank (nonce ""):\n')
   const staticBank = generateQuestionBank('')
-  auditBank('static', staticBank.passages, staticBank.questions, violations, integrity, notes)
+  auditBank('static', staticBank.passages, staticBank.questions, violations, integrity, notes, allQuestions)
   totalQuestions += staticBank.questions.length
   totalPassages += staticBank.passages.length
 
@@ -238,7 +289,7 @@ function main(): void {
   process.stdout.write(`\nDynamic generators (${ITERATIONS} iterations):\n`)
   for (let i = 0; i < ITERATIONS; i += 1) {
     const bank = generateFreshBatch(60)
-    auditBank(`run ${i + 1}`, bank.passages, bank.questions, violations, integrity, notes)
+    auditBank(`run ${i + 1}`, bank.passages, bank.questions, violations, integrity, notes, allQuestions)
     totalQuestions += bank.questions.length
     totalPassages += bank.passages.length
   }
@@ -246,6 +297,24 @@ function main(): void {
   process.stdout.write('\nSafety spot-checks (must be false):\n')
   for (const code of ['FUCK', 'SEX', 'DIE', 'ASS', 'WAR', 'SHIT', 'PENIS', 'DRUG']) {
     process.stdout.write(`  isCodeSafe("${code}") = ${isCodeSafe(code)}\n`)
+  }
+
+  const bySubject = new Map<Subject, number>()
+  for (const question of allQuestions) {
+    bySubject.set(question.subject, (bySubject.get(question.subject) ?? 0) + 1)
+  }
+  process.stdout.write('\nQuestions per subject:\n')
+  for (const [subject, count] of [...bySubject.entries()].sort()) {
+    process.stdout.write(`  ${subject.padEnd(9)} ${count}\n`)
+  }
+  const compassQuestions = allQuestions.filter((question) => question.subject === 'compass')
+  const compassByTopic = new Map<string, number>()
+  for (const question of compassQuestions) {
+    compassByTopic.set(question.topic, (compassByTopic.get(question.topic) ?? 0) + 1)
+  }
+  process.stdout.write('\nCompass questions per topic:\n')
+  for (const [topic, count] of [...compassByTopic.entries()].sort()) {
+    process.stdout.write(`  ${topic.padEnd(24)} ${count}\n`)
   }
 
   process.stdout.write('\n==================================================\n')

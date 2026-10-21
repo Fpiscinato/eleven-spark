@@ -221,7 +221,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           </div>
           <div>
             <p className="text-base font-black text-slate-900">Gloucestershire Mock Exam</p>
-            <p className="text-sm font-bold text-slate-600">Real Paper 1 & Paper 2 with section lock</p>
+            <p className="text-sm font-bold text-slate-600">Adventure, Beacon & Compass papers with section lock</p>
           </div>
         </button>
         <button

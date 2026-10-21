@@ -3,6 +3,7 @@ import {
   Check,
   Lightbulb,
   Medal,
+  PencilLine,
   RotateCcw,
   Sparkles,
   Square,
@@ -10,6 +11,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { BeaconWritingPanel } from '../components/exam/BeaconWritingPanel'
 import { QuestionView } from '../components/exam/QuestionView'
 import { MathText } from '../components/exam/MathText'
 import {
@@ -22,7 +24,9 @@ import {
 import { db } from '../db/database'
 import { useProfile } from '../context/ProfileContext'
 import {
-  SUBJECTS,
+  CORE_SUBJECTS,
+  OPTIONAL_SUBJECT_REASON,
+  OPTIONAL_SUBJECTS,
   type Attempt,
   type Difficulty,
   type Passage,
@@ -35,6 +39,7 @@ import { formatClock, uid } from '../lib/format'
 import { getAllAttempts } from '../lib/stats'
 import { SUBJECT_META } from '../lib/theme'
 import { startSession } from '../lib/sessionHelpers'
+import { isWrittenAnswerCorrect } from '../lib/writtenAnswer'
 import {
   readSession,
   removeSession,
@@ -86,12 +91,14 @@ interface RunState {
   mode: SessionMode
   questions: Question[]
   passagesById: Map<string, Passage>
+  writtenMode: boolean
 }
 
 interface Outcome {
-  selectedIndex: number
+  selectedIndex: number | null
   isCorrect: boolean
   timeSeconds: number
+  writtenAnswer?: string
 }
 
 interface PracticeProgress {
@@ -106,6 +113,7 @@ interface PracticeRunSnapshot {
   mode: SessionMode
   questionIds: string[]
   passageIds: string[]
+  writtenMode?: boolean
 }
 
 interface SessionSummary {
@@ -222,6 +230,53 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
       })
   }, [outcomes, run, onFinished])
 
+  const isWrittenQuestion = run.writtenMode && question.answerType === 'short_text'
+
+  const handleWriteConfirm = useCallback(
+    (value: string) => {
+      if (isConfirmed || finishedRef.current) return
+      const trimmed = value.trim()
+      if (trimmed === '') return
+      const timeSeconds = Math.max(0, Math.round((Date.now() - shownAtRef.current) / 1000))
+      const isCorrect = isWrittenAnswerCorrect(question, trimmed)
+      const target = question.timeTargetSeconds
+      void db.attempts.add({
+        id: uid(),
+        profileId,
+        sessionId: run.sessionId,
+        questionId: question.id,
+        subject: question.subject,
+        topic: question.topic,
+        difficulty: question.difficulty,
+        selectedIndex: null,
+        writtenAnswer: trimmed,
+        isCorrect,
+        timeSpentSeconds: timeSeconds,
+        flagged: false,
+        timestamp: Date.now(),
+      })
+      setOutcomes((previous) => {
+        const next = [...previous]
+        next[index] = { selectedIndex: null, isCorrect, timeSeconds, writtenAnswer: trimmed }
+        return next
+      })
+      if (isCorrect && timeSeconds <= target) {
+        setPaceMessage({ correct: true, text: `Great pace! ${timeSeconds}s / target ${target}s` })
+      } else if (isCorrect) {
+        setPaceMessage({
+          correct: true,
+          text: `Right answer! ${timeSeconds}s / target ${target}s — try to speed up a little next time.`,
+        })
+      } else {
+        setPaceMessage({
+          correct: false,
+          text: 'Not quite — check the correct answer below, then have another go next time.',
+        })
+      }
+    },
+    [isConfirmed, question, index, run.sessionId, profileId],
+  )
+
   const handleConfirm = useCallback(() => {
     if (pending === null || isConfirmed || finishedRef.current) return
     const timeSeconds = Math.max(0, Math.round((Date.now() - shownAtRef.current) / 1000))
@@ -315,6 +370,8 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
         }}
         locked={isConfirmed}
         showFeedback={isConfirmed}
+        writtenMode={run.writtenMode}
+        onWriteAnswer={(value) => handleWriteConfirm(value)}
       />
 
       {isConfirmed && paceMessage ? (
@@ -349,7 +406,9 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
             </p>
             {!outcome.isCorrect ? (
               <p className="mt-2 text-sm font-extrabold text-emerald-700">
-                Correct answer: {correctLetter} — {question.options[question.correctIndex]}
+                {isWrittenQuestion
+                  ? `Correct answer: ${question.options[question.correctIndex]}`
+                  : `Correct answer: ${correctLetter} — ${question.options[question.correctIndex]}`}
               </p>
             ) : null}
           </div>
@@ -360,6 +419,10 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
         <button type="button" onClick={goNext} className={btnPrimaryClass}>
           {isLast ? 'See my results' : 'Next question'}
         </button>
+      ) : isWrittenQuestion ? (
+        <p className="text-center text-sm font-bold text-slate-400">
+          Type your answer in the box above, then press &quot;Check my answer&quot;.
+        </p>
       ) : (
         <button
           type="button"
@@ -415,6 +478,7 @@ export function PracticePage({ params, onNavigate }: PracticePageProps) {
   const [topicFilter, setTopicFilter] = useState<string>(params.topic ?? 'all')
   const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>('mixed')
   const [count, setCount] = useState<number>(5)
+  const [writtenMode, setWrittenMode] = useState(false)
   const [clinicIds, setClinicIds] = useState<Set<string>>(new Set())
   const [run, setRun] = useState<RunState | null>(null)
   const [summary, setSummary] = useState<SessionSummary | null>(null)
@@ -468,7 +532,13 @@ export function PracticePage({ params, onNavigate }: PracticePageProps) {
         if (passage) passagesById.set(passage.id, passage)
       }
       if (cancelled) return
-      setRun({ sessionId: saved.sessionId, mode: saved.mode, questions, passagesById })
+      setRun({
+        sessionId: saved.sessionId,
+        mode: saved.mode,
+        questions,
+        passagesById,
+        writtenMode: saved.writtenMode === true,
+      })
     })()
     return () => {
       cancelled = true
@@ -515,18 +585,19 @@ export function PracticePage({ params, onNavigate }: PracticePageProps) {
       for (const passage of extraPassages ?? []) {
         passagesById.set(passage.id, passage)
       }
-      const sessionId = await startSession(mode, activeProfileId)
+      const sessionId = await startSession(mode, activeProfileId, { writtenMode })
       const ordered = shuffle(questions)
       writeSession(SESSION_KEYS.practiceRun, {
         sessionId,
         mode,
         questionIds: ordered.map((question) => question.id),
         passageIds: [...passagesById.keys()],
+        writtenMode,
       } satisfies PracticeRunSnapshot)
       setSummary(null)
-      setRun({ sessionId, mode, questions: ordered, passagesById })
+      setRun({ sessionId, mode, questions: ordered, passagesById, writtenMode })
     },
-    [activeProfileId],
+    [activeProfileId, writtenMode],
   )
 
   const startConfiguredPractice = useCallback(() => {
@@ -704,8 +775,13 @@ export function PracticePage({ params, onNavigate }: PracticePageProps) {
         </div>
       </button>
 
+      <BeaconWritingPanel />
+
       <section className={cardClass}>
-        <h2 className="mb-3 text-base font-black text-slate-900">Subject</h2>
+        <h2 className="mb-1 text-base font-black text-slate-900">Subject</h2>
+        <p className="mb-3 text-sm font-bold text-slate-500">
+          Core Gloucestershire FSCE subjects — these are the ones on the exam papers.
+        </p>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -717,7 +793,7 @@ export function PracticePage({ params, onNavigate }: PracticePageProps) {
           >
             All subjects
           </button>
-          {SUBJECTS.map((subject) => (
+          {CORE_SUBJECTS.map((subject) => (
             <button
               key={subject}
               type="button"
@@ -731,6 +807,49 @@ export function PracticePage({ params, onNavigate }: PracticePageProps) {
             </button>
           ))}
         </div>
+        <div className="mt-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+            Optional Brain Gym — Bonus only
+          </p>
+          <p className="mb-2 text-sm font-bold text-slate-600">{OPTIONAL_SUBJECT_REASON}</p>
+          <div className="flex flex-wrap gap-2">
+            {OPTIONAL_SUBJECTS.map((subject) => (
+              <button
+                key={subject}
+                type="button"
+                onClick={() => {
+                  setSubjectFilter(subject)
+                  setTopicFilter('all')
+                }}
+                className={chipClass(subjectFilter === subject)}
+              >
+                {SUBJECT_META[subject].label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className={cardClass}>
+        <h2 className="mb-3 text-base font-black text-slate-900">Answer style</h2>
+        <button
+          type="button"
+          onClick={() => setWrittenMode((value) => !value)}
+          aria-pressed={writtenMode}
+          className={`flex min-h-[56px] w-full items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left text-sm font-extrabold transition ${
+            writtenMode
+              ? 'border-indigo-600 bg-indigo-600 text-white'
+              : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-300'
+          }`}
+        >
+          <PencilLine className="h-5 w-5 shrink-0" aria-hidden="true" />
+          ✍️ Beacon Written Mode (Type Answer without Options)
+        </button>
+        <p className="mt-2 text-sm font-bold text-slate-500">
+          {writtenMode
+            ? 'Beacon is on: Maths and Cloze/Spelling questions need a typed number or word before the answer is revealed.'
+            : 'Beacon is off: every question uses the A–E answer boxes.'}
+        </p>
       </section>
 
       <section className={cardClass}>
