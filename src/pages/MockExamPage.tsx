@@ -1408,12 +1408,12 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
   const rubricComplete = CREATIVE_RUBRIC.every((criterion) => (engine.creativeScores?.[criterion] ?? 0) > 0)
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-4">
+    <div className="mx-auto flex max-w-4xl flex-col gap-3 md:h-[calc(100dvh-133px)] md:min-h-0 md:overflow-hidden">
       {alert ? (
         <div
           role="status"
           aria-live="polite"
-          className={`rounded-2xl border-2 px-4 py-2.5 text-sm font-extrabold ${
+          className={`shrink-0 rounded-2xl border-2 px-4 py-2.5 text-sm font-extrabold ${
             alert.tone === 'urgent'
               ? 'border-rose-200 bg-rose-50 text-rose-700'
               : 'border-amber-200 bg-amber-50 text-amber-800'
@@ -1423,7 +1423,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
         </div>
       ) : null}
 
-      <div className={`${cardClass} flex flex-wrap items-center justify-between gap-3`}>
+      <div className={`${cardClass} flex shrink-0 flex-wrap items-center justify-between gap-3`}>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-lg font-black text-slate-900">{engine.config.title}</span>
           {engine.config.sections.map((section, index) => {
@@ -1452,9 +1452,11 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
         </p>
       </div>
 
-      {!isCreativeWriting && sectionQuestionsList.length > 0 && question ? (
-      <div className={`${cardClass} flex flex-wrap items-center justify-between gap-3`}>
-        <div className="flex flex-wrap gap-1.5" aria-label="Question navigator">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex flex-col gap-3 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:pr-1">
+          {!isCreativeWriting && sectionQuestionsList.length > 0 && question ? (
+          <div className={`${cardClass} flex flex-wrap items-center justify-between gap-3`}>
+            <div className="flex flex-wrap gap-1.5" aria-label="Question navigator">
           {sectionQuestionsList.map((item, index) => {
             const answered = engine.answers[item.id] !== null && engine.answers[item.id] !== undefined && engine.answers[item.id] !== ''
             const flagged = engine.flags[item.id] === true
@@ -1597,6 +1599,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
         key={question.id}
         question={question}
         passage={passage}
+        compact
         questionNumber={engine.cursor + 1}
         totalQuestions={sectionQuestionsList.length}
         selectedIndex={
@@ -1611,8 +1614,11 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
       />
       ) : null}
 
+      </div>
+      </div>
+
       {!isCreativeWriting && sectionQuestionsList.length > 0 && question ? (
-      <div className="flex justify-between gap-3">
+      <div className="sticky bottom-[calc(64px+env(safe-area-inset-bottom))] z-20 -mx-4 shrink-0 flex justify-between gap-3 bg-white px-4 py-2 md:static md:mx-0 md:bg-transparent md:px-0">
         <button
           type="button"
           onClick={() => goToQuestion(Math.max(0, engine.cursor - 1))}
