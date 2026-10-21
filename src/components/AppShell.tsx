@@ -1,8 +1,9 @@
-import { BarChart3, BookOpen, ClipboardList, Home, Lock, Settings, TrendingUp, Unlock, X, Zap } from 'lucide-react'
+import { BarChart3, BookOpen, ClipboardList, Home, Lock, Settings, Timer, TrendingUp, Unlock, X, Zap } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useParentAutoLock, useParentGate } from '../context/ParentGateContext'
 import { VERSION_SEAL } from '../config/version'
 import { ElevenSparkLogo } from './brand/ElevenSparkLogo'
+import { VersionBadge } from './brand/VersionBadge'
 import { MotivationalCard } from './MotivationalCard'
 import { ProfileSwitcher } from './ProfileSwitcher'
 import { SyncStatusBadge } from './SyncStatusBadge'
@@ -121,7 +122,13 @@ export function AppShell({ screen, onNavigate, children }: AppShellProps) {
         <div className="no-print ml-auto flex min-w-0 items-center gap-1.5 md:gap-2">
           <SyncStatusBadge />
           {parentMode && secondsLeft !== null ? (
-            <span className="hidden rounded-xl border-2 border-amber-200 bg-amber-50 px-2 py-1 text-xs font-extrabold text-amber-800 sm:inline">
+            <span
+              className="flex items-center gap-1 rounded-xl border-2 border-amber-200 bg-amber-50 px-2 py-1 text-xs font-extrabold text-amber-800"
+              role="status"
+              aria-label={`Parent mode auto-locks in ${formatCountdown(secondsLeft)}`}
+            >
+              <Timer className="h-3.5 w-3.5" aria-hidden="true" />
+              <span className="hidden md:inline">Auto-lock in</span>
               {formatCountdown(secondsLeft)}
             </span>
           ) : null}
@@ -175,6 +182,9 @@ export function AppShell({ screen, onNavigate, children }: AppShellProps) {
           ) : null}
           {screen === 'mock' ? null : <MotivationalCard variant="compact" className="mb-4 md:hidden" />}
           {children}
+          <div className="no-print mt-8 flex justify-center pb-2 md:hidden">
+            <VersionBadge />
+          </div>
         </div>
       </main>
 

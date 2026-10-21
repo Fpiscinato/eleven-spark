@@ -1,17 +1,17 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { deflateSync } from 'node:zlib'
 
 /**
  * ElevenSpark icon generator.
  *
- * Everything is drawn from scratch so the browser tab icon, the home screen
- * icon and the app logo always look like the same brand:
+ * The favicon (browser tab) and the home screen icon are the same brand mark
+ * as the logo shown inside the app: the indigo shield with "11+" and the amber
+ * spark.
  *
- * - favicon.ico / favicon.svg  : bold spark on indigo, readable at 16px
- * - icon-192.png / icon-512.png: the full shield logo (home screen icon)
- * - maskable-*.png             : shield on a full bleed background, safe for
- *                                the round masks Android and iOS apply
- * - apple-touch-icon.png       : the maskable version at 180x180
+ * Files are written into a versioned folder (public/app-icons/vX.Y.Z) and the
+ * manifest points at that folder, so a new release always serves a brand new
+ * icon URL and phones pick up the new icon without the student having to
+ * uninstall and install the app again.
  */
 
 const INDIGO_TOP = [79, 70, 229]
@@ -101,7 +101,6 @@ function encodeIco(images) {
   return Buffer.concat([header, ...entries, ...payloads])
 }
 
-
 function inPolygon(x, y, poly) {
   let inside = false
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i, i += 1) {
@@ -115,21 +114,23 @@ function inPolygon(x, y, poly) {
   return inside
 }
 
+function inCircle(x, y, cx, cy, r) {
+  return (x - cx) ** 2 + (y - cy) ** 2 <= r * r
+}
+
 function cubic(p0, p1, p2, p3, steps = 24) {
   const points = []
   for (let i = 1; i <= steps; i += 1) {
     const t = i / steps
     const mt = 1 - t
-    const x =
-      mt * mt * mt * p0[0] + 3 * mt * mt * t * p1[0] + 3 * mt * t * t * p2[0] + t * t * t * p3[0]
-    const y =
-      mt * mt * mt * p0[1] + 3 * mt * mt * t * p1[1] + 3 * mt * t * t * p2[1] + t * t * t * p3[1]
+    const x = mt * mt * mt * p0[0] + 3 * mt * mt * t * p1[0] + 3 * mt * t * t * p2[0] + t * t * t * p3[0]
+    const y = mt * mt * mt * p0[1] + 3 * mt * mt * t * p1[1] + 3 * mt * t * t * p2[1] + t * t * t * p3[1]
     points.push([x, y])
   }
   return points
 }
 
-/** The shield of the app logo, drawn in the 64x72 space of the SVG logo. */
+/** The shield of the app logo, in the 64x72 space of the SVG logo. */
 const SHIELD = [
   [32, 3],
   [60, 13],
@@ -139,7 +140,7 @@ const SHIELD = [
   [4, 13],
 ]
 
-/** The spark that sits on the shield. */
+/** The amber spark that sits on the shield. */
 const SPARK = [
   [44, 40],
   [34.5, 54],
@@ -150,7 +151,7 @@ const SPARK = [
   [53.5, 40],
 ]
 
-/** The two "1" digits of the logo. */
+/** The white "11+" of the logo. */
 const DIGITS = [
   [
     [16, 24],
@@ -176,6 +177,24 @@ const DIGITS = [
     [27.5, 28],
     [20.5, 28],
   ],
+  [
+    [32.5, 25.5],
+    [44.5, 25.5],
+    [44.5, 30],
+    [32.5, 30],
+  ],
+  [
+    [36.25, 22],
+    [40.75, 22],
+    [40.75, 33.5],
+    [36.25, 33.5],
+  ],
+]
+
+/** The two little dots of the logo. */
+const DOTS = [
+  { cx: 50, cy: 28, r: 2.2, color: [252, 211, 77] },
+  { cx: 12, cy: 46, r: 1.5, color: [253, 230, 138] },
 ]
 
 function mix(a, b, t) {
@@ -190,26 +209,8 @@ function gradient(top, bottom, y, height) {
   return mix(top, bottom, Math.max(0, Math.min(1, y / Math.max(1, height))))
 }
 
-function place(points, placement) {
-  return points.map(([x, y]) => [x * placement.scale + placement.offsetX, y * placement.scale + placement.offsetY])
-}
-
-function roundedRectPoints(x, y, w, h, r) {
-  const points = []
-  const steps = 8
-  const corners = [
-    [x + w - r, y + r, -90],
-    [x + w - r, y + h - r, 0],
-    [x + r, y + h - r, 90],
-    [x + r, y + r, 180],
-  ]
-  for (const [cx, cy, start] of corners) {
-    for (let i = 0; i <= steps; i += 1) {
-      const angle = ((start + (i * 90) / steps) * Math.PI) / 180
-      points.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)])
-    }
-  }
-  return points
+function place(points, scale, offsetX, offsetY) {
+  return points.map(([x, y]) => [x * scale + offsetX, y * scale + offsetY])
 }
 
 function renderIcon(size, background, artwork) {
@@ -227,93 +228,108 @@ function renderIcon(size, background, artwork) {
         const paint = artwork(x, y)
         const final = paint ?? colour
         if (!final) continue
-        const alpha = paint && colour ? 1 : 1
-        r += final[0] * alpha
-        g += final[1] * alpha
-        b += final[2] * alpha
+        r += final[0]
+        g += final[1]
+        b += final[2]
         a += 255
       }
     }
     const total = samples * samples
     if (a === 0) return [0, 0, 0, 0]
-    return [Math.round(r / (a / 255)), Math.round(g / (a / 255)), Math.round(b / (a / 255)), Math.round(a / total)]
+    return [
+      Math.round(r / (a / 255)),
+      Math.round(g / (a / 255)),
+      Math.round(b / (a / 255)),
+      Math.round(a / total),
+    ]
   })
 }
 
-/** The shield logo, drawn inside a square canvas. */
-function shieldIcon(size, opaque, inset = 0.08) {
+/**
+ * The app logo drawn inside a square canvas.
+ * `detail` adds the "11+" and the dots; the tiny 16px favicon keeps only the
+ * shield and the spark so it stays readable.
+ */
+function logoIcon(size, { detail = true, background = false, inset = 0.08 } = {}) {
   const padding = size * inset
   const scale = (size - padding * 2) / 72
   const offsetX = (size - 64 * scale) / 2
   const offsetY = padding
-  const shield = place(SHIELD, { scale, offsetX, offsetY })
-  const spark = place(SPARK, { scale, offsetX, offsetY })
-  const digits = DIGITS.map((digit) => place(digit, { scale, offsetX, offsetY }))
-  const background = opaque
+  const shield = place(SHIELD, scale, offsetX, offsetY)
+  const spark = place(SPARK, scale, offsetX, offsetY)
+  const digits = DIGITS.map((digit) => place(digit, scale, offsetX, offsetY))
+  const bg = background
     ? (x, y) =>
-        x < 0 || y < 0 || x > size || y > size
-          ? null
-          : gradient(INDIGO_TOP, INDIGO_BOTTOM, y, size)
+        x < 0 || y < 0 || x > size || y > size ? null : gradient(INDIGO_TOP, INDIGO_BOTTOM, y, size)
     : null
   const artwork = (x, y) => {
     if (inPolygon(x, y, spark)) return gradient(AMBER_TOP, AMBER_BOTTOM, y, size)
-    for (const digit of digits) {
-      if (inPolygon(x, y, digit)) return WHITE
+    if (detail) {
+      for (const digit of digits) {
+        if (inPolygon(x, y, digit)) return WHITE
+      }
+      for (const dot of DOTS) {
+        if (inCircle(x, y, dot.cx * scale + offsetX, dot.cy * scale + offsetY, dot.r * scale)) {
+          return dot.color
+        }
+      }
     }
     if (inPolygon(x, y, shield)) return gradient(INDIGO_TOP, INDIGO_BOTTOM, y, size)
     return null
   }
-  return renderIcon(size, background, artwork)
+  return renderIcon(size, bg, artwork)
 }
 
-/** A bold spark on a rounded indigo tile, readable at 16 pixels. */
-function sparkIcon(size) {
-  const tile = roundedRectPoints(size * 0.04, size * 0.04, size * 0.92, size * 0.92, size * 0.22)
-  const scale = (size * 0.62) / 40
-  const offsetX = (size - 40 * scale) / 2
-  const offsetY = (size - 40 * scale) / 2
-  const spark = place(
-    [
-      [10, 0],
-      [0, 14],
-      [6, 14],
-      [0, 26],
-      [20, 8],
-      [13, 8],
-    ],
-    { scale, offsetX, offsetY },
-  )
-  const artwork = (x, y) => {
-    if (inPolygon(x, y, spark)) return gradient(AMBER_TOP, AMBER_BOTTOM, y, size)
-    if (inPolygon(x, y, tile)) return gradient(INDIGO_TOP, INDIGO_BOTTOM, y, size)
-    return null
-  }
-  return renderIcon(size, null, artwork)
-}
-
-const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 72" width="64" height="72">
   <defs>
-    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#4f46e5"/>
-      <stop offset="100%" stop-color="#312e81"/>
+    <linearGradient id="es-shield" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#312e81"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
     </linearGradient>
-    <linearGradient id="bolt" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="es-spark" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#fcd34d"/>
       <stop offset="100%" stop-color="#f59e0b"/>
     </linearGradient>
   </defs>
-  <rect x="2.5" y="2.5" width="59" height="59" rx="14" fill="url(#tile)"/>
-  <path d="M37 15 L17 37 H27 L24 49 L44 27 H34 Z" fill="url(#bolt)"/>
+  <path d="M32 3 L60 13 V35 C60 53 48 65.5 32 70 C16 65.5 4 53 4 35 V13 Z" fill="url(#es-shield)"/>
+  <path d="M32 3 L60 13 V35 C60 53 48 65.5 32 70 C16 65.5 4 53 4 35 V13 Z" fill="none" stroke="#4338ca" stroke-width="2" stroke-linejoin="round" opacity="0.55"/>
+  <rect x="16" y="24" width="5" height="20" rx="2" fill="#ffffff"/>
+  <rect x="12.5" y="24" width="7" height="4" rx="1.5" fill="#ffffff"/>
+  <rect x="24" y="24" width="5" height="20" rx="2" fill="#ffffff"/>
+  <rect x="20.5" y="24" width="7" height="4" rx="1.5" fill="#ffffff"/>
+  <rect x="32.5" y="25.5" width="12" height="4.5" rx="1.8" fill="#ffffff"/>
+  <rect x="36.25" y="22" width="4.5" height="11.5" rx="1.8" fill="#ffffff"/>
+  <path d="M44 40 L34.5 54 H40.5 L33 66 L52 48.5 H45 L53.5 40 Z" fill="url(#es-spark)" stroke="#b45309" stroke-width="1" stroke-linejoin="round"/>
+  <circle cx="50" cy="28" r="2.2" fill="#fcd34d"/>
+  <circle cx="12" cy="46" r="1.5" fill="#fde68a"/>
 </svg>
 `
 
-mkdirSync('public', { recursive: true })
+function readAppVersion() {
+  const source = readFileSync('src/config/version.ts', 'utf8')
+  const match = source.match(/APP_VERSION\s*=\s*'([^']+)'/)
+  if (!match) throw new Error('Could not read APP_VERSION from src/config/version.ts')
+  return match[1]
+}
+
+const version = readAppVersion()
+const iconDir = `public/app-icons/v${version}`
+
+mkdirSync(iconDir, { recursive: true })
+for (const entry of readdirSync('public/app-icons')) {
+  if (entry !== `v${version}`) rmSync(`public/app-icons/${entry}`, { recursive: true, force: true })
+}
 writeFileSync('public/favicon.svg', FAVICON_SVG)
-writeFileSync('public/favicon.ico', encodeIco([16, 32, 48].map((size) => ({ size, png: sparkIcon(size) }))))
-writeFileSync('public/favicon-32.png', sparkIcon(32))
-writeFileSync('public/icon-192.png', shieldIcon(192, false))
-writeFileSync('public/icon-512.png', shieldIcon(512, false))
-writeFileSync('public/maskable-192.png', shieldIcon(192, true, 0.15))
-writeFileSync('public/maskable-512.png', shieldIcon(512, true, 0.15))
-writeFileSync('public/apple-touch-icon.png', shieldIcon(180, true, 0.15))
-console.log('Generated favicon.svg, favicon.ico, favicon-32.png, icon-192.png, icon-512.png, maskable-192.png, maskable-512.png, apple-touch-icon.png')
+writeFileSync('public/favicon.ico', encodeIco([
+  { size: 16, png: logoIcon(16, { detail: false }) },
+  { size: 32, png: logoIcon(32, { detail: false }) },
+  { size: 48, png: logoIcon(48, { detail: true }) },
+]))
+writeFileSync('public/favicon-32.png', logoIcon(32, { detail: false }))
+writeFileSync('public/icon.svg', FAVICON_SVG)
+writeFileSync(`${iconDir}/icon-192.png`, logoIcon(192, { detail: true }))
+writeFileSync(`${iconDir}/icon-512.png`, logoIcon(512, { detail: true }))
+writeFileSync(`${iconDir}/maskable-192.png`, logoIcon(192, { detail: true, background: true, inset: 0.15 }))
+writeFileSync(`${iconDir}/maskable-512.png`, logoIcon(512, { detail: true, background: true, inset: 0.15 }))
+writeFileSync(`${iconDir}/apple-touch-icon.png`, logoIcon(180, { detail: true, background: true, inset: 0.15 }))
+console.log(`Generated icons for v${version} in ${iconDir}`)

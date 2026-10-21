@@ -1,23 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 72">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 72" width="64" height="72">
   <defs>
     <linearGradient id="es-shield" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#312e81" />
-      <stop offset="100%" stop-color="#1e1b4b" />
+      <stop offset="0%" stop-color="#312e81"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
     </linearGradient>
     <linearGradient id="es-spark" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#fcd34d" />
-      <stop offset="100%" stop-color="#f59e0b" />
+      <stop offset="0%" stop-color="#fcd34d"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
     </linearGradient>
   </defs>
-  <path d="M32 3 L60 13 V35 C60 53 48 65.5 32 70 C16 65.5 4 53 4 35 V13 Z" fill="url(#es-shield)" />
-  <path d="M32 3 L60 13 V35 C60 53 48 65.5 32 70 C16 65.5 4 53 4 35 V13 Z" fill="none" stroke="#4338ca" stroke-width="2" stroke-linejoin="round" opacity="0.55" />
-  <rect x="16" y="24" width="5" height="20" rx="2" fill="#ffffff" />
-  <rect x="12.5" y="24" width="7" height="4" rx="1.5" fill="#ffffff" />
-  <rect x="24" y="24" width="5" height="20" rx="2" fill="#ffffff" />
-  <rect x="20.5" y="24" width="7" height="4" rx="1.5" fill="#ffffff" />
-  <rect x="32.5" y="25.5" width="12" height="4.5" rx="1.8" fill="#ffffff" />
-  <rect x="36.25" y="22" width="4.5" height="11.5" rx="1.8" fill="#ffffff" />
-  <path d="M44 40 L34.5 54 H40.5 L33 66 L52 48.5 H45 L53.5 40 Z" fill="url(#es-spark)" stroke="#b45309" stroke-width="1" stroke-linejoin="round" />
-  <circle cx="50" cy="28" r="2.2" fill="#fcd34d" />
-  <circle cx="12" cy="46" r="1.5" fill="#fde68a" />
+  <path d="M32 3 L60 13 V35 C60 53 48 65.5 32 70 C16 65.5 4 53 4 35 V13 Z" fill="url(#es-shield)"/>
+  <path d="M32 3 L60 13 V35 C60 53 48 65.5 32 70 C16 65.5 4 53 4 35 V13 Z" fill="none" stroke="#4338ca" stroke-width="2" stroke-linejoin="round" opacity="0.55"/>
+  <rect x="16" y="24" width="5" height="20" rx="2" fill="#ffffff"/>
+  <rect x="12.5" y="24" width="7" height="4" rx="1.5" fill="#ffffff"/>
+  <rect x="24" y="24" width="5" height="20" rx="2" fill="#ffffff"/>
+  <rect x="20.5" y="24" width="7" height="4" rx="1.5" fill="#ffffff"/>
+  <rect x="32.5" y="25.5" width="12" height="4.5" rx="1.8" fill="#ffffff"/>
+  <rect x="36.25" y="22" width="4.5" height="11.5" rx="1.8" fill="#ffffff"/>
+  <path d="M44 40 L34.5 54 H40.5 L33 66 L52 48.5 H45 L53.5 40 Z" fill="url(#es-spark)" stroke="#b45309" stroke-width="1" stroke-linejoin="round"/>
+  <circle cx="50" cy="28" r="2.2" fill="#fcd34d"/>
+  <circle cx="12" cy="46" r="1.5" fill="#fde68a"/>
 </svg>

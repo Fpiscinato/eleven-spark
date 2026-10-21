@@ -1,4 +1,5 @@
 import { generateQuestionBank } from '../src/generators'
+import { filterUnsafePassages, filterUnsafeQuestions } from '../src/services/safetySeal'
 import { visualFigureKey } from '../src/utils/nvrFigures'
 
 interface Issue {
@@ -97,15 +98,65 @@ function checkQuestion(question: {
   return issues
 }
 
+interface PassageLike {
+  id: string
+  title: string
+  content: string
+}
+
+function checkPassage(passage: PassageLike, questions: { passageId?: string }[]): Issue[] {
+  const issues: Issue[] = []
+  const push = (reason: string, detail: string) => {
+    issues.push({ id: passage.id, topic: 'passage', reason, detail })
+  }
+  if (passage.title.trim().length === 0) push('empty passage title', passage.id)
+  if (passage.content.trim().length === 0) push('empty passage text', passage.id)
+  const used = questions.filter((question) => question.passageId === passage.id).length
+  if (used === 0) push('unused passage', 'no question points at this passage')
+  return issues
+}
+
 function main(): void {
   const batches = Number(process.argv[2] ?? 12)
   const issues: Issue[] = []
   let questionCount = 0
+  let servedCount = 0
+  let passageCount = 0
   for (let batch = 0; batch < batches; batch += 1) {
     const bank = generateQuestionBank(`audit-${batch}-${Math.random().toString(36).slice(2, 8)}`)
     questionCount += bank.questions.length
     for (const question of bank.questions) {
       issues.push(...checkQuestion(question))
+    }
+
+    const safeQuestions = filterUnsafeQuestions(bank.questions)
+    const safePassages = filterUnsafePassages(bank.passages)
+    servedCount += safeQuestions.kept.length
+    passageCount += safePassages.kept.length
+    const passageIds = new Set(safePassages.kept.map((passage) => passage.id))
+    for (const question of safeQuestions.kept) {
+      issues.push(...checkQuestion(question))
+      if (question.passageId && !passageIds.has(question.passageId)) {
+        issues.push({
+          id: question.id,
+          topic: question.topic,
+          reason: 'missing passage',
+          detail: `passageId ${question.passageId} is not in the bank`,
+        })
+      }
+      const answer = question.options[question.correctIndex]
+      const answerFigure = question.svgConfig?.optionFigures?.[question.correctIndex]
+      if (answer === undefined || (answer.trim().length === 0 && !answerFigure)) {
+        issues.push({
+          id: question.id,
+          topic: question.topic,
+          reason: 'empty answer',
+          detail: 'the correct option has no text and no figure',
+        })
+      }
+    }
+    for (const passage of safePassages.kept) {
+      issues.push(...checkPassage(passage, safeQuestions.kept))
     }
   }
 
@@ -117,6 +168,8 @@ function main(): void {
   }
 
   console.log(`questions checked: ${questionCount}`)
+  console.log(`questions served after safety seal: ${servedCount}`)
+  console.log(`passages checked: ${passageCount}`)
   console.log(`issues: ${issues.length}`)
   for (const [topic, reasons] of [...byTopic.entries()].sort()) {
     console.log(`  ${topic}: ${[...reasons.entries()].map(([reason, count]) => `${reason} x${count}`).join(', ')}`)

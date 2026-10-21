@@ -8,7 +8,7 @@ import { SUBJECTS } from '../db/schemas'
 import { getCompletedSessions, getAllAttempts } from '../lib/stats'
 import { SUBJECT_META } from '../lib/theme'
 import { computeRoadmap, masteryFor, type RoadmapSnapshot } from '../utils/roadmapCalculator'
-import { EmptyState, PageSpinner, ScreenHeader, btnPrimaryClass, cardClass } from '../components/ui'
+import { EmptyState, PageSpinner, ScreenHeader, btnSecondaryClass, cardClass } from '../components/ui'
 import { PhaseCards } from '../components/PhaseCards'
 import type { NavParams, ScreenId } from '../types'
 
@@ -30,6 +30,8 @@ interface TopicCell {
 
 const MIN_ATTEMPTS_PER_TOPIC = 3
 const ON_PACE_RATIO = 1.2
+const TOPIC_PREVIEW = 6
+
 const QUALIFYING_GOAL = 75
 const TOP_SCHOOL_GOAL = 85
 const MOCK_MODES = new Set(['mock_paper_1', 'mock_paper_2', 'mini_mock'])
@@ -212,6 +214,8 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
   const [mockSessions, setMockSessions] = useState<Session[]>([])
   const [cells, setCells] = useState<TopicCell[]>([])
   const [roadmap, setRoadmap] = useState<RoadmapSnapshot | null>(null)
+  const [showAllTopics, setShowAllTopics] = useState(false)
+  const [showMatrix, setShowMatrix] = useState(false)
 
   const load = useCallback(async () => {
     const [attempts, sessions] = await Promise.all([
@@ -345,8 +349,22 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
           </section>
         ) : (
           <section className={cardClass}>
-            <h2 className="mb-4 text-lg font-black text-slate-900">Your topics</h2>
-            <div className="flex flex-col gap-4">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-black text-slate-900">Your topics</h2>
+              {cells.length > TOPIC_PREVIEW ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAllTopics((open) => !open)}
+                  aria-expanded={showAllTopics}
+                  className={btnSecondaryClass}
+                >
+                  {showAllTopics
+                    ? 'Show fewer topics'
+                    : `Show all ${cells.length} topics (${cells.length - TOPIC_PREVIEW} more)`}
+                </button>
+              ) : null}
+            </div>
+            <div className={`flex flex-col gap-4 ${showAllTopics ? '' : 'max-h-[22rem] overflow-hidden'}`}>
               {(Object.keys(STUDENT_META) as StudentBucket[]).map((bucket) => {
                 const meta = STUDENT_META[bucket]
                 const bucketCells = studentCells(bucket)
@@ -357,7 +375,7 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
                       {meta.emoji} {meta.label}
                     </p>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {bucketCells.map((cell) => (
+                      {(showAllTopics ? bucketCells : bucketCells.slice(0, TOPIC_PREVIEW)).map((cell) => (
                         <TopicChip key={`${cell.subject}-${cell.topic}`} cell={cell} onNavigate={onNavigate} />
                       ))}
                     </div>
@@ -382,11 +400,6 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
           </section>
         )}
 
-        <div className="mt-5">
-          <button type="button" onClick={() => onNavigate('dashboard')} className={btnPrimaryClass}>
-            Back to Home
-          </button>
-        </div>
       </div>
     )
   }
@@ -490,7 +503,27 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
             body={`Answer at least ${MIN_ATTEMPTS_PER_TOPIC} questions on a topic and it will appear in the matrix with a shortcut to practise it.`}
           />
         ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <>
+          {cells.length > TOPIC_PREVIEW ? (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs font-bold text-slate-500">
+                {cells.length} topics with enough answers for a verdict.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowMatrix((open) => !open)}
+                aria-expanded={showMatrix}
+                className={btnSecondaryClass}
+              >
+                {showMatrix ? 'Hide the full matrix' : `Show the full matrix (${cells.length} topics)`}
+              </button>
+            </div>
+          ) : null}
+          <div
+            className={`grid grid-cols-1 gap-3 md:grid-cols-2 ${
+              showMatrix ? '' : 'max-h-[24rem] overflow-hidden'
+            }`}
+          >
             <div className="md:col-span-2">
               <p className="mb-1.5 text-xs font-black uppercase tracking-wide text-slate-400">
                 Strong (80–100%)
@@ -574,6 +607,7 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
               </div>
             </div>
           </div>
+          </>
         )}
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">

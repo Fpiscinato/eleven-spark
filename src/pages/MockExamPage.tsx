@@ -8,6 +8,7 @@ import {
   PencilLine,
   Printer,
   Trophy,
+  X,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MathText } from '../components/exam/MathText'
@@ -483,6 +484,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
   const [omrSheetMode, setOmrSheetMode] = useState<ExamMode | null>(null)
   const [gradeMode, setGradeMode] = useState<ExamMode | null>(null)
   const [reviewOpen, setReviewOpen] = useState(false)
+  const [cancelStep, setCancelStep] = useState<0 | 1 | 2>(0)
   const { activeProfileId } = useProfile()
   const { parentMode, requestUnlock } = useParentGate()
   const questionShownAtRef = useRef(0)
@@ -566,12 +568,22 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
         db.questions.where('subject').equals('maths').count(),
         db.questions.count(),
       ])
-      const half = Math.ceil(allCount / 2)
-      setIntroCounts({
+      const available: Record<ExamMode, number[]> = {
         mock_paper_1: [englishCount, vrCount],
         mock_paper_2: [nvrCount, mathsCount],
-        mini_mock: [half, allCount - half],
-      })
+        mini_mock: [allCount, allCount],
+      }
+      const counts: Record<ExamMode, number[]> = {
+        mock_paper_1: [],
+        mock_paper_2: [],
+        mini_mock: [],
+      }
+      for (const mode of EXAM_MODES) {
+        counts[mode] = EXAM_CONFIGS[mode].sections.map((section, index) =>
+          Math.min(section.questionCount, available[mode][index] ?? 0),
+        )
+      }
+      setIntroCounts(counts)
     })()
   }, [phase])
 
@@ -1374,6 +1386,13 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
           >
             Finish {sectionConfig.title} Early
           </button>
+          <button
+            type="button"
+            onClick={() => setCancelStep(1)}
+            className={`${btnSecondaryClass} min-h-[44px] px-4 py-2 text-sm text-rose-700`}
+          >
+            Cancel exam
+          </button>
         </div>
       </div>
 
@@ -1416,6 +1435,71 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
           </button>
         )}
       </div>
+
+      {cancelStep > 0 ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl" role="alertdialog" aria-modal="true">
+            <div className="mb-3 flex items-center gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-rose-100 text-rose-700">
+                <X className="h-6 w-6" aria-hidden="true" />
+              </div>
+              <h2 className="text-lg font-black text-slate-900">
+                {cancelStep === 1 ? 'Cancel this exam?' : 'Are you sure? Everything is lost'}
+              </h2>
+            </div>
+            {cancelStep === 1 ? (
+              <p className="mb-5 text-sm font-semibold leading-relaxed text-slate-600">
+                The paper will be marked as abandoned and you will go back to the mock list. You can start
+                a new paper whenever you are ready.
+              </p>
+            ) : (
+              <p className="mb-5 text-sm font-semibold leading-relaxed text-slate-600">
+                Your answers of this paper will not be saved. This cannot be undone.
+              </p>
+            )}
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {cancelStep === 1 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setCancelStep(2)}
+                    className={`${btnPrimaryClass} flex-1`}
+                  >
+                    Yes, cancel the exam
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCancelStep(0)}
+                    className={`${btnSecondaryClass} flex-1`}
+                  >
+                    Keep working
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCancelStep(0)
+                      goIntro()
+                    }}
+                    className={`${btnPrimaryClass} flex-1`}
+                  >
+                    Cancel the exam now
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCancelStep(1)}
+                    className={`${btnSecondaryClass} flex-1`}
+                  >
+                    Go back
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {finishStep > 0 ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4">

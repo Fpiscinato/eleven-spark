@@ -81,9 +81,9 @@ export const EXAM_CONFIGS: Record<ExamMode, ExamConfig> = {
   mini_mock: {
     mode: 'mini_mock',
     title: 'Quick Mini-Mock (20 min)',
-    subtitle: 'Section A (10 min) + Section B (10 min) · half the questions',
+    subtitle: 'Section A (10 min) + Section B (10 min) · 24 questions in total',
     blurb:
-      'A shorter two-section run for weekdays: mixed questions split across Section A and Section B, 10 minutes each — half the length of a full paper.',
+      'A short two-section run for busy weekdays: 12 mixed questions, 10 minutes, then 12 more mixed questions with another 10 minutes on the clock.',
     omrEligible: false,
     sections: [
       {

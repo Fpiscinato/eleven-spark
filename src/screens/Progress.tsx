@@ -306,6 +306,7 @@ export function Progress({ onNavigate }: ProgressProps) {
           <button
             type="button"
             onClick={() => setShowAllMistakes((open) => !open)}
+            aria-expanded={showAllMistakes}
             className={`${btnSecondaryClass} mt-3 w-full`}
           >
             {showAllMistakes
@@ -344,6 +345,7 @@ export function Progress({ onNavigate }: ProgressProps) {
           <button
             type="button"
             onClick={() => setShowAllSessions((open) => !open)}
+            aria-expanded={showAllSessions}
             className={`${btnSecondaryClass} mt-3 w-full`}
           >
             {showAllSessions
