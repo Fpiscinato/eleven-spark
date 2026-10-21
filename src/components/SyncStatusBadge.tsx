@@ -126,7 +126,7 @@ export function SyncStatusBadge() {
         title={title}
         role="status"
         aria-label={`Cloud sync: ${title}`}
-        className={`inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 px-3 text-sm font-extrabold ${
+        className={`inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 px-3 text-sm font-extrabold max-sm:h-10 max-sm:min-h-10 max-sm:w-10 max-sm:justify-center max-sm:gap-0 max-sm:px-0 ${
           visual === 'ok'
             ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
             : visual === 'syncing'

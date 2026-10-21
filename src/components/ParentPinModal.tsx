@@ -157,7 +157,7 @@ export function ParentPinModal({ open, onSubmit, onCancel }: ParentPinModalProps
                   key="confirm"
                   type="button"
                   onClick={submit}
-                  className="grid min-h-[56px] place-items-center rounded-2xl bg-amber-500 text-slate-900 transition hover:bg-amber-400 active:scale-95"
+                  className="grid min-h-[56px] place-items-center rounded-2xl bg-amber-500 text-[#0f172a] transition hover:bg-amber-400 active:scale-95"
                   aria-label="Confirm PIN"
                 >
                   <Check className="h-6 w-6" aria-hidden="true" />
@@ -181,7 +181,7 @@ export function ParentPinModal({ open, onSubmit, onCancel }: ParentPinModalProps
           <button type="button" onClick={onCancel} className={`${btnSecondaryClass} flex-1 border-slate-600 bg-slate-800 text-slate-200`}>
             Cancel
           </button>
-          <button type="button" onClick={submit} className={`${btnPrimaryClass} flex-1 bg-amber-500 text-slate-900 hover:bg-amber-400`}>
+          <button type="button" onClick={submit} className={`${btnPrimaryClass} flex-1 bg-amber-500 text-[#0f172a] hover:bg-amber-400`}>
             Unlock
           </button>
         </div>

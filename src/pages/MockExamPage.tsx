@@ -1,7 +1,17 @@
-import { ClipboardList, Flag, Info, Lock, LockOpen, PencilLine, Printer, Trophy } from 'lucide-react'
+import {
+  ChevronDown,
+  ClipboardList,
+  Flag,
+  Info,
+  Lock,
+  LockOpen,
+  PencilLine,
+  Printer,
+  Trophy,
+} from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MathText } from '../components/exam/MathText'
-import { NvrSvgRenderer } from '../components/exam/NvrSvgRenderer'
+import { NvrFigureSvg, NvrSvgRenderer } from '../components/exam/NvrSvgRenderer'
 import { QuestionView } from '../components/exam/QuestionView'
 import {
   AccuracyBar,
@@ -12,9 +22,22 @@ import {
 } from '../components/ui'
 import { db } from '../db/database'
 import type { Attempt, Passage, Question, SectionBreakdownEntry } from '../db/schemas'
-import { EXAM_CONFIGS, EXAM_MODES, shuffleQuestions, type ExamConfig, type ExamMode } from '../lib/exam'
+import {
+  EXAM_CONFIGS,
+  EXAM_MODES,
+  pickBalancedQuestions,
+  shuffleQuestions,
+  type ExamConfig,
+  type ExamMode,
+} from '../lib/exam'
 import { formatClock, formatMinutes, uid } from '../lib/format'
 import { abandonSession, completeSession, startSession } from '../lib/sessionHelpers'
+import {
+  readSession,
+  removeSession,
+  SESSION_KEYS,
+  writeSession,
+} from '../lib/sessionPersistence'
 import { useProfile } from '../context/ProfileContext'
 import { useParentGate } from '../context/ParentGateContext'
 import { celebrateSpecial } from '../components/brand/SpecialDedicationModal'
@@ -74,6 +97,14 @@ interface Engine {
   startedAt: number
 }
 
+interface EngineSnapshot {
+  engine: Omit<Engine, 'passagesById'>
+  passages: Passage[]
+  remaining: number
+  phase: 'running' | 'transition'
+  savedAt: number
+}
+
 interface SectionAlert {
   key: number
   text: string
@@ -119,14 +150,21 @@ async function loadSectionsForConfig(config: ExamConfig): Promise<{
   if (config.mode === 'mini_mock') {
     const { questions, passagesById } = await loadQuestionsForSubjects(['english', 'vr', 'maths', 'nvr'])
     const mixed = shuffleQuestions(questions)
-    const half = Math.ceil(mixed.length / 2)
-    return { sectionQuestions: [mixed.slice(0, half), mixed.slice(half)], passagesById }
+    const firstCount = config.sections[0]?.questionCount ?? 12
+    const secondCount = config.sections[1]?.questionCount ?? 12
+    const first = pickBalancedQuestions(mixed, firstCount, (question) => question.subject)
+    const remaining = mixed.filter((question) => !first.includes(question))
+    const second = pickBalancedQuestions(remaining, secondCount, (question) => question.subject)
+    return { sectionQuestions: [first, second], passagesById }
   }
   const sectionQuestions: Question[][] = []
   const passagesById = new Map<string, Passage>()
   for (const section of config.sections) {
     const loaded = await loadQuestionsForSubjects(section.subjects)
-    sectionQuestions.push(loaded.questions)
+    const chosen = pickBalancedQuestions(loaded.questions, section.questionCount, (question) =>
+      question.topic ?? question.subject,
+    )
+    sectionQuestions.push(chosen)
     for (const [id, passage] of loaded.passagesById) {
       passagesById.set(id, passage)
     }
@@ -191,23 +229,23 @@ function OmrSheetOverlay({ mode, onSelectMode, onClose }: OmrSheetOverlayProps) 
         </button>
       </div>
 
-      <div className="omr-print-area mx-auto my-6 w-full max-w-[860px] border border-slate-300 bg-white p-6 shadow-xl md:p-10">
-        <header className="mb-5 border-b-2 border-slate-900 pb-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+      <div className="omr-print-area mx-auto my-6 w-full max-w-[860px] border border-[#cbd5e1] bg-[#ffffff] p-6 shadow-xl md:p-10">
+        <header className="mb-5 border-b-2 border-[#0f172a] pb-4">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#475569]">
             ElevenSpark practice sheet · GL Assessment format
           </p>
-          <h1 className="mt-1 text-xl font-black text-slate-900">{config.title} — Answer Sheet</h1>
-          <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-sm font-bold text-slate-900">
+          <h1 className="mt-1 text-xl font-black text-[#0f172a]">{config.title} — Answer Sheet</h1>
+          <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-sm font-bold text-[#0f172a]">
             <span>
               Name:{' '}
-              <span className="inline-block w-48 border-b border-slate-900 align-bottom">&nbsp;</span>
+              <span className="inline-block w-48 border-b border-[#0f172a] align-bottom">&nbsp;</span>
             </span>
             <span>
               Date:{' '}
-              <span className="inline-block w-32 border-b border-slate-900 align-bottom">&nbsp;</span>
+              <span className="inline-block w-32 border-b border-[#0f172a] align-bottom">&nbsp;</span>
             </span>
           </div>
-          <ul className="mt-3 list-inside list-disc text-xs font-semibold text-slate-700">
+          <ul className="mt-3 list-inside list-disc text-xs font-semibold text-[#334155]">
             <li>
               While reading the questions on screen, mark one box per row with a pencil:{' '}
               {LETTERS.map((letter) => `[${letter}]`).join(' ')}
@@ -218,22 +256,22 @@ function OmrSheetOverlay({ mode, onSelectMode, onClose }: OmrSheetOverlayProps) 
         </header>
 
         {sections === null ? (
-          <p className="py-8 text-center text-sm font-bold text-slate-500">Loading the sheet rows...</p>
+          <p className="py-8 text-center text-sm font-bold text-[#475569]">Loading the sheet rows...</p>
         ) : (
           config.sections.map((section, sectionIndex) => {
             const rows = sections[sectionIndex] ?? []
             return (
               <section key={section.id} className="mb-6">
-                <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-400 pb-1">
-                  <h2 className="text-sm font-black uppercase tracking-wide text-slate-900">
+                <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 border-b border-[#94a3b8] pb-1">
+                  <h2 className="text-sm font-black uppercase tracking-wide text-[#0f172a]">
                     {section.title} — {section.subjectLabel}
                   </h2>
-                  <span className="text-xs font-bold text-slate-600">
+                  <span className="text-xs font-bold text-[#334155]">
                     {rows.length} questions · {formatMinutes(section.timeSeconds)}
                   </span>
                 </div>
                 {rows.length === 0 ? (
-                  <p className="py-3 text-xs font-bold text-slate-500">
+                  <p className="py-3 text-xs font-bold text-[#475569]">
                     No questions in the bank for this section yet.
                   </p>
                 ) : (
@@ -241,16 +279,16 @@ function OmrSheetOverlay({ mode, onSelectMode, onClose }: OmrSheetOverlayProps) 
                     {rows.map((row, index) => (
                       <li
                         key={row.id}
-                        className="flex items-center gap-3 border-b border-dotted border-slate-300 py-1"
+                        className="flex items-center gap-3 border-b border-dotted border-[#cbd5e1] py-1"
                       >
-                        <span className="w-8 text-right text-sm font-black tabular-nums text-slate-900">
+                        <span className="w-8 text-right text-sm font-black tabular-nums text-[#0f172a]">
                           {index + 1}
                         </span>
                         <span className="flex gap-2">
                           {LETTERS.map((letter) => (
                             <span
                               key={letter}
-                              className="inline-flex h-6 w-6 items-center justify-center rounded-[3px] border border-slate-900 text-[11px] font-black text-slate-900"
+                              className="inline-flex h-6 w-6 items-center justify-center rounded-[3px] border border-[#0f172a] text-[11px] font-black text-[#0f172a]"
                             >
                               {letter}
                             </span>
@@ -265,7 +303,7 @@ function OmrSheetOverlay({ mode, onSelectMode, onClose }: OmrSheetOverlayProps) 
           })
         )}
 
-        <footer className="mt-4 border-t border-slate-300 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+        <footer className="mt-4 border-t border-[#cbd5e1] pt-3 text-[10px] font-semibold uppercase tracking-wider text-[#475569]">
           ElevenSpark practice sheet — training only, not the real Gloucestershire test paper.
         </footer>
       </div>
@@ -444,6 +482,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
   const [alert, setAlert] = useState<SectionAlert | null>(null)
   const [omrSheetMode, setOmrSheetMode] = useState<ExamMode | null>(null)
   const [gradeMode, setGradeMode] = useState<ExamMode | null>(null)
+  const [reviewOpen, setReviewOpen] = useState(false)
   const { activeProfileId } = useProfile()
   const { parentMode, requestUnlock } = useParentGate()
   const questionShownAtRef = useRef(0)
@@ -464,11 +503,49 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
     return () => {
       const current = engineRef.current
       if (current && (phaseRef.current === 'running' || phaseRef.current === 'transition')) {
-        const totalTimeSeconds = Math.round((Date.now() - current.startedAt) / 1000)
-        void abandonSession(current.sessionId, totalTimeSeconds)
+        // The paper is kept in session storage so the child can carry on
+        // after switching screen or tab. It is only abandoned when there is
+        // nothing left to resume.
+        if (!readSession<EngineSnapshot>(SESSION_KEYS.mockEngine)) {
+          const totalTimeSeconds = Math.round((Date.now() - current.startedAt) / 1000)
+          void abandonSession(current.sessionId, totalTimeSeconds)
+        }
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (!engine || (phase !== 'running' && phase !== 'transition')) return
+    const { passagesById, ...rest } = engine
+    writeSession(SESSION_KEYS.mockEngine, {
+      engine: rest,
+      passages: [...passagesById.values()],
+      remaining,
+      phase,
+      savedAt: Date.now(),
+    } satisfies EngineSnapshot)
+  }, [engine, phase, remaining])
+
+  useEffect(() => {
+    const snapshot = readSession<EngineSnapshot>(SESSION_KEYS.mockEngine)
+    if (!snapshot) return
+    if (snapshot.engine.profileId !== activeProfileId) {
+      removeSession(SESSION_KEYS.mockEngine)
+      return
+    }
+    const restored: Engine = {
+      ...snapshot.engine,
+      passagesById: new Map(snapshot.passages.map((passage) => [passage.id, passage])),
+    }
+    setEngine(restored)
+    setRemaining(Math.max(1, snapshot.remaining))
+    setPhase(snapshot.phase)
+    setAlert({
+      key: Date.now(),
+      text: 'We saved your exam — pick up exactly where you left off.',
+      tone: 'warn',
+    })
+  }, [activeProfileId])
 
   const fetchPersonalBest = useCallback(async (mode: ExamMode): Promise<number | null> => {
     const best = await db.sessions
@@ -681,6 +758,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
       scheduleSync()
       setGradeMode(null)
       setEngine(null)
+      removeSession(SESSION_KEYS.mockEngine)
       setReport({ config, timed: false, scorePercentage, correct, total, timeSeconds: 0, breakdown, details, previousBest })
       setPhase('results')
     },
@@ -761,7 +839,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
     const nextIndex = engine.sectionIndex + 1
     const nextSection = engine.config.sections[nextIndex]
     if (!nextSection) return
-    setEngine({ ...engine, sectionIndex: nextIndex, cursor: 0 })
+    setEngine((current) => (current ? { ...current, sectionIndex: nextIndex, cursor: 0 } : current))
     setRemaining(nextSection.timeSeconds)
     setAlert(null)
     questionShownAtRef.current = Date.now()
@@ -770,37 +848,43 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
 
   const goToQuestion = useCallback(
     (index: number) => {
-      if (!engine) return
       accrueCurrentQuestion()
-      setEngine({ ...engine, cursor: index })
+      setEngine((current) => (current ? { ...current, cursor: index } : current))
     },
-    [engine, accrueCurrentQuestion],
+    [accrueCurrentQuestion],
   )
 
-  const selectAnswer = useCallback(
-    (optionIndex: number) => {
-      if (!engine) return
-      const question = engine.sectionQuestions[engine.sectionIndex]?.[engine.cursor]
-      if (!question) return
-      setEngine({
-        ...engine,
-        answers: { ...engine.answers, [question.id]: optionIndex },
-      })
-    },
-    [engine],
-  )
+  const selectAnswer = useCallback((optionIndex: number) => {
+    setEngine((current) => {
+      if (!current) return current
+      const question = current.sectionQuestions[current.sectionIndex]?.[current.cursor]
+      if (!question) return current
+      return {
+        ...current,
+        answers: { ...current.answers, [question.id]: optionIndex },
+      }
+    })
+  }, [])
 
   const toggleFlag = useCallback(() => {
-    if (!engine) return
-    const question = engine.sectionQuestions[engine.sectionIndex]?.[engine.cursor]
-    if (!question) return
-    setEngine({
-      ...engine,
-      flags: { ...engine.flags, [question.id]: !(engine.flags[question.id] === true) },
+    setEngine((current) => {
+      if (!current) return current
+      const question = current.sectionQuestions[current.sectionIndex]?.[current.cursor]
+      if (!question) return current
+      return {
+        ...current,
+        flags: { ...current.flags, [question.id]: !(current.flags[question.id] === true) },
+      }
     })
-  }, [engine])
+  }, [])
 
   const goIntro = () => {
+    const current = engineRef.current
+    if (current) {
+      const totalTimeSeconds = Math.round((Date.now() - current.startedAt) / 1000)
+      void abandonSession(current.sessionId, totalTimeSeconds)
+    }
+    removeSession(SESSION_KEYS.mockEngine)
     setEngine(null)
     setReport(null)
     setFinishStep(0)
@@ -1058,6 +1142,24 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
               No mistakes — every question on this paper is correct. Outstanding focus!
             </p>
           ) : (
+            <>
+            <button
+              type="button"
+              onClick={() => setReviewOpen((open) => !open)}
+              aria-expanded={reviewOpen}
+              className={`${btnSecondaryClass} mb-3 w-full justify-between`}
+            >
+              <span>
+                {reviewOpen
+                  ? 'Hide the mistake review'
+                  : `Show all ${errorDetails.length} mistake${errorDetails.length === 1 ? '' : 's'}`}
+              </span>
+              <ChevronDown
+                className={`h-5 w-5 transition-transform ${reviewOpen ? 'rotate-180' : ''}`}
+                aria-hidden="true"
+              />
+            </button>
+            {reviewOpen ? (
             <ul className="flex flex-col gap-4">
               {(() => {
                 const numberByQuestion = new Map<string, number>()
@@ -1102,19 +1204,19 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
                       <div className="mb-2 overflow-x-auto">
                         <NvrSvgRenderer config={detail.question.svgConfig} className="py-1" />
                       </div>
-                    ) : (
-                      <p className="mb-2 text-sm font-semibold text-slate-700">
-                        <MathText text={detail.question.stem} />
-                      </p>
-                    )}
+                    ) : null}
+                    <p className="mb-2 text-sm font-semibold text-slate-700">
+                      <MathText text={detail.question.stem} />
+                    </p>
                     <ol className="mb-2 flex flex-wrap gap-2">
                       {detail.question.options.map((option, optionIndex) => {
                         const isChosen = optionIndex === detail.selectedIndex
                         const isCorrect = optionIndex === detail.question.correctIndex
+                        const figure = detail.question.svgConfig?.optionFigures?.[optionIndex]
                         return (
                           <li
                             key={optionIndex}
-                            className={`rounded-lg border px-2.5 py-1.5 text-xs font-extrabold ${
+                            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-extrabold ${
                               isCorrect
                                 ? 'border-emerald-300 bg-emerald-100 text-emerald-900'
                                 : isChosen
@@ -1122,7 +1224,15 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
                                   : 'border-slate-200 bg-white text-slate-600'
                             }`}
                           >
-                            {LETTERS[optionIndex]}) {option}
+                            {figure ? (
+                              <NvrFigureSvg
+                                figure={figure}
+                                className="h-7 w-7 shrink-0"
+                                title={`Option ${LETTERS[optionIndex]}`}
+                              />
+                            ) : null}
+                            <span>{LETTERS[optionIndex]})</span>
+                            {option.trim().length > 0 ? <span>{option}</span> : null}
                           </li>
                         )
                       })}
@@ -1138,6 +1248,8 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
                 })
               })()}
             </ul>
+            ) : null}
+            </>
           )}
         </div>
 
@@ -1286,14 +1398,23 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
         >
           Previous
         </button>
-        <button
-          type="button"
-          onClick={() => goToQuestion(Math.min(sectionQuestionsList.length - 1, engine.cursor + 1))}
-          disabled={engine.cursor >= sectionQuestionsList.length - 1}
-          className={btnPrimaryClass}
-        >
-          Next
-        </button>
+        {engine.cursor >= sectionQuestionsList.length - 1 ? (
+          <button
+            type="button"
+            onClick={() => setFinishStep(1)}
+            className={btnPrimaryClass}
+          >
+            Finish {sectionConfig.title}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => goToQuestion(engine.cursor + 1)}
+            className={btnPrimaryClass}
+          >
+            Next
+          </button>
+        )}
       </div>
 
       {finishStep > 0 ? (

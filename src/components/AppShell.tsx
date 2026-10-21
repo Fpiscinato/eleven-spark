@@ -43,19 +43,8 @@ export function AppShell({ screen, onNavigate, children }: AppShellProps) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200 bg-white md:flex">
-        <button
-          type="button"
-          onClick={() => onNavigate('dashboard')}
-          className="flex items-center gap-3 border-b border-slate-100 px-6 py-5 text-left transition hover:bg-slate-50"
-        >
-          <ElevenSparkLogo className="h-11 w-auto" />
-          <div>
-            <p className="text-lg font-black leading-tight text-slate-900">ElevenSpark</p>
-            <p className="text-xs font-bold text-slate-500">Gloucestershire 11+</p>
-          </div>
-        </button>
-        <nav className="flex flex-1 flex-col gap-2 p-4" aria-label="Main navigation">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-slate-200 bg-white md:top-[69px] md:flex md:h-[calc(100dvh-69px)]">
+        <nav className="flex flex-1 flex-col gap-2 p-4 pt-5" aria-label="Main navigation">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon
             const active = screen === item.screen
@@ -114,12 +103,22 @@ export function AppShell({ screen, onNavigate, children }: AppShellProps) {
         <p className="px-6 pb-5 text-xs font-bold text-slate-400">{VERSION_SEAL}</p>
       </aside>
 
-      <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-3 py-2.5 backdrop-blur md:pl-[276px] md:pr-8 md:py-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <ElevenSparkLogo className="h-9 w-auto shrink-0" />
-          <p className="truncate text-base font-black text-slate-900">ElevenSpark</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
+      <header className="app-print-header sticky top-0 z-40 flex h-[64px] items-center gap-2 border-b border-slate-200 bg-white/95 px-2 backdrop-blur md:h-[69px] md:gap-3 md:px-6">
+        <button
+          type="button"
+          onClick={() => onNavigate('dashboard')}
+          aria-label="Go to Home"
+          className="flex min-w-0 items-center gap-2 md:w-64 md:shrink-0"
+        >
+          <ElevenSparkLogo className="h-8 w-auto shrink-0 md:h-9" />
+          <span className="min-w-0">
+            <span className="block truncate text-base font-black leading-tight text-slate-900">ElevenSpark</span>
+            <span className="hidden text-xs font-bold leading-tight text-slate-500 md:block">
+              Gloucestershire 11+
+            </span>
+          </span>
+        </button>
+        <div className="no-print ml-auto flex min-w-0 items-center gap-1.5 md:gap-2">
           <SyncStatusBadge />
           {parentMode && secondsLeft !== null ? (
             <span className="hidden rounded-xl border-2 border-amber-200 bg-amber-50 px-2 py-1 text-xs font-extrabold text-amber-800 sm:inline">

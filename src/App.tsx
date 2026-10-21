@@ -115,7 +115,12 @@ export default function App() {
     <ProfileProvider>
       <ParentGateProvider>
         {needsOnboarding ? (
-          <Onboarding onComplete={() => setNeedsOnboarding(false)} />
+          <Onboarding
+            onComplete={() => {
+              setNeedsOnboarding(false)
+              navigate('dashboard')
+            }}
+          />
         ) : (
           <AppShell screen={route.screen} onNavigate={(screen) => navigate(screen)}>
             {route.screen === 'dashboard' ? <Dashboard onNavigate={navigate} /> : null}

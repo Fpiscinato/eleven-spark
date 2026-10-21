@@ -10,8 +10,9 @@ import {
 } from 'react'
 import { ParentPinModal } from '../components/ParentPinModal'
 import { getParentPin } from '../lib/admin'
+import { DEFAULT_PARENT_LOCK_MINUTES, useParentLockMinutes } from '../lib/parentAutoLock'
 
-export const AUTO_LOCK_MS = 5 * 60 * 1000
+export const AUTO_LOCK_MS = DEFAULT_PARENT_LOCK_MINUTES * 60 * 1000
 
 interface ParentGateContextValue {
   parentMode: boolean
@@ -48,6 +49,7 @@ export function ParentGateProvider({ children }: { children: ReactNode }) {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const lastActivityRef = useRef<number>(0)
+  const [lockMinutes] = useParentLockMinutes()
 
   const requestUnlock = useCallback((): Promise<boolean> => {
     if (parentMode) return Promise.resolve(true)
@@ -96,12 +98,15 @@ export function ParentGateProvider({ children }: { children: ReactNode }) {
     for (const eventName of ACTIVITY_EVENTS) {
       window.addEventListener(eventName, markActivity, { passive: true })
     }
+    const timeoutMs = lockMinutes * 60 * 1000
     const timer = window.setInterval(() => {
-      const remaining = Math.max(0, AUTO_LOCK_MS - (Date.now() - lastActivityRef.current))
+      const remaining = Math.max(0, timeoutMs - (Date.now() - lastActivityRef.current))
       setSecondsLeft(Math.ceil(remaining / 1000))
       if (remaining <= 0) {
         setParentMode(false)
-        setNotice('Parent Mode locked automatically after 5 minutes of inactivity.')
+        setNotice(
+          `Parent Mode locked automatically after ${lockMinutes} minute${lockMinutes === 1 ? '' : 's'} of inactivity.`,
+        )
       }
     }, 1000)
     return () => {
@@ -110,7 +115,7 @@ export function ParentGateProvider({ children }: { children: ReactNode }) {
         window.removeEventListener(eventName, markActivity)
       }
     }
-  }, [parentMode])
+  }, [parentMode, lockMinutes])
 
   const value = useMemo<ParentGateContextValue>(
     () => ({ parentMode, requestUnlock, lockParentMode }),

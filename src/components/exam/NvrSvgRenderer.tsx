@@ -12,7 +12,7 @@ const LAYOUT_CAPACITY: Record<NvrLayout, number> = {
   matrix3: 9,
 }
 
-const STROKE = '#1f2937'
+const STROKE = 'var(--nvr-stroke)'
 
 type Point = [number, number]
 
@@ -110,18 +110,18 @@ function FigureArtwork({ figure }: { figure: NvrFigure }) {
   const rotation = figure.rotation ?? 0
   const fillKind = figure.fill ?? 'empty'
 
-  let fill = '#ffffff'
+  let fill = 'var(--nvr-fill)'
   let defs: ReactNode = null
   if (fillKind === 'solid') {
     fill = STROKE
   } else if (fillKind === 'shaded') {
-    fill = '#94a3b8'
+    fill = 'var(--nvr-muted)'
   } else if (fillKind === 'striped') {
     fill = `url(#${patternId})`
     defs = (
       <defs>
         <pattern id={patternId} width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <rect width="8" height="8" fill="#ffffff" />
+          <rect width="8" height="8" fill="var(--nvr-fill)" />
           <line x1="0" y1="0" x2="0" y2="8" stroke={STROKE} strokeWidth="3" />
         </pattern>
       </defs>
@@ -269,7 +269,7 @@ function MatrixGrid({ cells, cols, rows }: { cells: (NvrFigure | '?' | null)[]; 
                 fontWeight={800}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fill="#94a3b8"
+                fill="var(--nvr-muted)"
               >
                 ?
               </text>
@@ -283,7 +283,7 @@ function MatrixGrid({ cells, cols, rows }: { cells: (NvrFigure | '?' | null)[]; 
                 fontSize={28}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fill="#e2e8f0"
+                fill="var(--nvr-muted)"
               >
                 ·
               </text>

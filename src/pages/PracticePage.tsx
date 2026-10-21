@@ -35,6 +35,12 @@ import { formatClock, uid } from '../lib/format'
 import { getAllAttempts } from '../lib/stats'
 import { SUBJECT_META } from '../lib/theme'
 import { startSession } from '../lib/sessionHelpers'
+import {
+  readSession,
+  removeSession,
+  SESSION_KEYS,
+  writeSession,
+} from '../lib/sessionPersistence'
 import { generateFreshBatch } from '../generators'
 import { celebrateSpecial } from '../components/brand/SpecialDedicationModal'
 import { scheduleSync } from '../services/gistSync'
@@ -88,6 +94,20 @@ interface Outcome {
   timeSeconds: number
 }
 
+interface PracticeProgress {
+  index: number
+  pending: number | null
+  outcomes: (Outcome | null)[]
+  startedAt: number
+}
+
+interface PracticeRunSnapshot {
+  sessionId: string
+  mode: SessionMode
+  questionIds: string[]
+  passageIds: string[]
+}
+
 interface SessionSummary {
   sessionId: string
   mode: SessionMode
@@ -116,16 +136,34 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
   const shownAtRef = useRef(0)
   const startedAtRef = useRef(0)
   const finishedRef = useRef(false)
+  const progressKey = `${SESSION_KEYS.practiceProgress}${run.sessionId}`
 
   useEffect(() => {
-    const startedAt = Date.now()
+    const saved = readSession<PracticeProgress>(progressKey)
+    const startedAt = saved?.startedAt ?? Date.now()
     startedAtRef.current = startedAt
-    shownAtRef.current = startedAt
+    shownAtRef.current = Date.now()
+    if (saved) {
+      setIndex(Math.min(saved.index, run.questions.length - 1))
+      setPending(saved.pending)
+      setOutcomes(saved.outcomes)
+    }
     const timer = window.setInterval(() => {
       setElapsed(Math.round((Date.now() - startedAt) / 1000))
     }, 1000)
     return () => window.clearInterval(timer)
+    // The saved progress is only read once, when the runner opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    writeSession(progressKey, {
+      index,
+      pending,
+      outcomes,
+      startedAt: startedAtRef.current,
+    } satisfies PracticeProgress)
+  }, [progressKey, index, pending, outcomes])
 
   const question = run.questions[index]
   const passage = question.passageId ? run.passagesById.get(question.passageId) : undefined
@@ -136,6 +174,7 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
   const finalize = useCallback(() => {
     if (finishedRef.current) return
     finishedRef.current = true
+    removeSession(`${SESSION_KEYS.practiceProgress}${run.sessionId}`)
     const answered = outcomes.filter((entry): entry is Outcome => entry !== null)
     const correct = answered.filter((entry) => entry.isCorrect).length
     const total = answered.length
@@ -379,6 +418,7 @@ export function PracticePage({ params, onNavigate }: PracticePageProps) {
   const [clinicIds, setClinicIds] = useState<Set<string>>(new Set())
   const [run, setRun] = useState<RunState | null>(null)
   const [summary, setSummary] = useState<SessionSummary | null>(null)
+  const lastSeenRef = useRef<Map<string, Attempt>>(new Map())
 
   const refreshBank = useCallback(async () => {
     const [questionRows, attemptRows] = await Promise.all([
@@ -404,11 +444,36 @@ export function PracticePage({ params, onNavigate }: PracticePageProps) {
       }
     }
     setClinicIds(flagged)
+    lastSeenRef.current = latestByQuestion
   }, [activeProfileId])
 
   useEffect(() => {
     void refreshBank()
   }, [refreshBank])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const saved = readSession<PracticeRunSnapshot>(SESSION_KEYS.practiceRun)
+      if (!saved) return
+      const questionRows = await db.questions.bulkGet(saved.questionIds)
+      const questions = questionRows.filter((question): question is Question => question !== undefined)
+      if (questions.length === 0) {
+        removeSession(SESSION_KEYS.practiceRun)
+        return
+      }
+      const passageRows = saved.passageIds.length > 0 ? await db.passages.bulkGet(saved.passageIds) : []
+      const passagesById = new Map<string, Passage>()
+      for (const passage of passageRows) {
+        if (passage) passagesById.set(passage.id, passage)
+      }
+      if (cancelled) return
+      setRun({ sessionId: saved.sessionId, mode: saved.mode, questions, passagesById })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const topics = useMemo(() => {
     const values = new Set<string>()
@@ -451,15 +516,25 @@ export function PracticePage({ params, onNavigate }: PracticePageProps) {
         passagesById.set(passage.id, passage)
       }
       const sessionId = await startSession(mode, activeProfileId)
+      const ordered = shuffle(questions)
+      writeSession(SESSION_KEYS.practiceRun, {
+        sessionId,
+        mode,
+        questionIds: ordered.map((question) => question.id),
+        passageIds: [...passagesById.keys()],
+      } satisfies PracticeRunSnapshot)
       setSummary(null)
-      setRun({ sessionId, mode, questions: shuffle(questions), passagesById })
+      setRun({ sessionId, mode, questions: ordered, passagesById })
     },
     [activeProfileId],
   )
 
   const startConfiguredPractice = useCallback(() => {
-    const chosen = filtered.slice(0, Math.min(count, filtered.length))
-    void beginRun(chosen, 'quick_practice')
+    const size = Math.min(count, filtered.length)
+    const shuffled = shuffle(filtered)
+    const fresh = shuffled.filter((question) => !lastSeenRef.current.has(question.id))
+    const repeated = shuffled.filter((question) => lastSeenRef.current.has(question.id))
+    void beginRun([...fresh, ...repeated].slice(0, size), 'quick_practice')
   }, [filtered, count, beginRun])
 
   const startFreshPractice = useCallback(() => {
@@ -578,6 +653,7 @@ export function PracticePage({ params, onNavigate }: PracticePageProps) {
         run={run}
         profileId={activeProfileId}
         onFinished={(nextSummary) => {
+          removeSession(SESSION_KEYS.practiceRun)
           setSummary(nextSummary)
           void refreshBank()
           scheduleSync()

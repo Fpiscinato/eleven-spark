@@ -72,13 +72,13 @@ export function ProfileSwitcher() {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-3 text-sm font-extrabold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700"
+        className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 border-slate-200 bg-white px-3 text-sm font-extrabold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700 max-sm:h-11 max-sm:max-w-[44px] max-sm:justify-center max-sm:gap-0 max-sm:px-0"
       >
         <span className="grid h-7 w-7 place-items-center rounded-xl bg-indigo-100 text-base leading-none">
           {activeProfile?.avatar ?? '🌟'}
         </span>
-        <span className="max-w-[110px] truncate">{activeProfile?.name ?? 'Player'}</span>
-        <ChevronDown className="h-4 w-4" aria-hidden="true" />
+        <span className="hidden max-w-[110px] truncate sm:inline-block">{activeProfile?.name ?? 'Player'}</span>
+        <ChevronDown className="hidden h-4 w-4 sm:block" aria-hidden="true" />
       </button>
 
       {open ? (

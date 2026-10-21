@@ -34,6 +34,7 @@ interface QuizRunnerProps {
   questions: Question[]
   passagesById: Map<string, Passage>
   onFinished: (result: QuizResult) => void
+  initialAnswers?: Record<string, number>
 }
 
 export function QuizRunner({
@@ -43,10 +44,15 @@ export function QuizRunner({
   questions,
   passagesById,
   onFinished,
+  initialAnswers,
 }: QuizRunnerProps) {
   const [index, setIndex] = useState(0)
-  const [selections, setSelections] = useState<(number | null)[]>(() => questions.map(() => null))
-  const [locked, setLocked] = useState<boolean[]>(() => questions.map(() => false))
+  const [selections, setSelections] = useState<(number | null)[]>(() =>
+    questions.map((question) => initialAnswers?.[question.id] ?? null),
+  )
+  const [locked, setLocked] = useState<boolean[]>(() =>
+    questions.map((question) => initialAnswers?.[question.id] !== undefined),
+  )
   const [correctCount, setCorrectCount] = useState(0)
   const [praise, setPraise] = useState(PRAISE[0])
   const [elapsed, setElapsed] = useState(0)
@@ -54,6 +60,7 @@ export function QuizRunner({
   const timesRef = useRef<Record<string, number>>({})
   const startedAtRef = useRef(0)
   const finishedRef = useRef(false)
+  const selectingIndexRef = useRef(-1)
 
   useEffect(() => {
     const startedAt = Date.now()
@@ -113,26 +120,16 @@ export function QuizRunner({
   }, [questions, selections, sessionId, onFinished])
 
   const handleSelect = useCallback(
-    async (optionIndex: number) => {
-      if (isAnswered || finishedRef.current) return
+    (optionIndex: number) => {
+      if (isAnswered || finishedRef.current || selectingIndexRef.current === index) return
+      selectingIndexRef.current = index
+      window.setTimeout(() => {
+        if (selectingIndexRef.current === index) selectingIndexRef.current = -1
+      }, 250)
       const now = Date.now()
       const timeSpentSeconds = Math.max(0, Math.round((now - shownAtRef.current) / 1000))
       const isCorrect = optionIndex === question.correctIndex
       timesRef.current[question.id] = (timesRef.current[question.id] ?? 0) + timeSpentSeconds
-      await db.attempts.add({
-        id: uid(),
-        profileId,
-        sessionId,
-        questionId: question.id,
-        subject: question.subject,
-        topic: question.topic,
-        difficulty: question.difficulty,
-        selectedIndex: optionIndex,
-        isCorrect,
-        timeSpentSeconds,
-        flagged: false,
-        timestamp: now,
-      })
       setSelections((previous) => {
         const next = [...previous]
         next[index] = optionIndex
@@ -147,6 +144,22 @@ export function QuizRunner({
         setCorrectCount((count) => count + 1)
         setPraise(PRAISE[Math.floor(Math.random() * PRAISE.length)])
       }
+      void db.attempts
+        .add({
+          id: uid(),
+          profileId,
+          sessionId,
+          questionId: question.id,
+          subject: question.subject,
+          topic: question.topic,
+          difficulty: question.difficulty,
+          selectedIndex: optionIndex,
+          isCorrect,
+          timeSpentSeconds,
+          flagged: false,
+          timestamp: now,
+        })
+        .catch(() => undefined)
     },
     [isAnswered, question, sessionId, profileId, index],
   )

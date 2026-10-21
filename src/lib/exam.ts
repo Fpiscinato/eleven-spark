@@ -8,6 +8,8 @@ export interface ExamSectionConfig {
   subjectLabel: string
   subjects: readonly Subject[]
   timeSeconds: number
+  /** How many questions the section really contains, so the paper stays realistic. */
+  questionCount: number
 }
 
 export interface ExamConfig {
@@ -38,6 +40,7 @@ export const EXAM_CONFIGS: Record<ExamMode, ExamConfig> = {
         subjectLabel: 'English',
         subjects: ['english'],
         timeSeconds: 25 * MINUTE,
+        questionCount: 30,
       },
       {
         id: 'B',
@@ -45,6 +48,7 @@ export const EXAM_CONFIGS: Record<ExamMode, ExamConfig> = {
         subjectLabel: 'Verbal Reasoning',
         subjects: ['vr'],
         timeSeconds: 25 * MINUTE,
+        questionCount: 30,
       },
     ],
   },
@@ -62,6 +66,7 @@ export const EXAM_CONFIGS: Record<ExamMode, ExamConfig> = {
         subjectLabel: 'Non-Verbal Reasoning',
         subjects: ['nvr'],
         timeSeconds: 20 * MINUTE,
+        questionCount: 25,
       },
       {
         id: 'B',
@@ -69,6 +74,7 @@ export const EXAM_CONFIGS: Record<ExamMode, ExamConfig> = {
         subjectLabel: 'KS2 Maths',
         subjects: ['maths'],
         timeSeconds: 30 * MINUTE,
+        questionCount: 25,
       },
     ],
   },
@@ -86,6 +92,7 @@ export const EXAM_CONFIGS: Record<ExamMode, ExamConfig> = {
         subjectLabel: 'Mixed — first half',
         subjects: SUBJECTS,
         timeSeconds: 10 * MINUTE,
+        questionCount: 12,
       },
       {
         id: 'B',
@@ -93,9 +100,46 @@ export const EXAM_CONFIGS: Record<ExamMode, ExamConfig> = {
         subjectLabel: 'Mixed — second half',
         subjects: SUBJECTS,
         timeSeconds: 10 * MINUTE,
+        questionCount: 12,
       },
     ],
   },
+}
+
+/**
+ * Picks `count` questions spread evenly across the groups (one per group in
+ * turn), so a mock paper keeps the same mix of topics/subjects as the real
+ * thing instead of a block of questions from a single topic.
+ */
+export function pickBalancedQuestions(
+  questions: Question[],
+  count: number,
+  groupKey: (question: Question) => string,
+): Question[] {
+  if (count <= 0 || questions.length === 0) return []
+  const groups = new Map<string, Question[]>()
+  for (const question of questions) {
+    const key = groupKey(question)
+    const bucket = groups.get(key)
+    if (bucket) bucket.push(question)
+    else groups.set(key, [question])
+  }
+  const buckets = Array.from(groups.values())
+  const picked: Question[] = []
+  let round = 0
+  while (picked.length < count) {
+    let added = false
+    for (const bucket of buckets) {
+      const question = bucket[round]
+      if (!question) continue
+      picked.push(question)
+      added = true
+      if (picked.length >= count) break
+    }
+    if (!added) break
+    round += 1
+  }
+  return picked
 }
 
 export function shuffleQuestions(questions: Question[]): Question[] {

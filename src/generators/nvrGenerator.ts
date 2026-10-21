@@ -343,7 +343,9 @@ function oddOneOutQuestion(rng: Rng, index: number, nonce: string): Question {
     oddIndex = 3
     explanation = 'Four figures carry the same dot in the middle. The odd one out carries a different mark, so it cannot belong.'
   } else {
-    const fill = rng.pick(FILLS)
+    // Striped arrows turn half a turn without changing how they look, so the
+    // pattern uses a fill that keeps every quarter-turn visible.
+    const fill = rng.pick(['empty', 'solid', 'shaded'] as const)
     const start = rng.int(0, 3) * 90
     const patternRotations = [0, 90, 180, 270]
     oddIndex = rng.int(0, 4)
@@ -360,7 +362,12 @@ function oddOneOutQuestion(rng: Rng, index: number, nonce: string): Question {
   }
 
   oddIndex = Math.min(Math.max(oddIndex, 0), 4)
-  const figuresInOrder = figures
+  const figuresInOrder = figures.every(
+    (candidate, position) =>
+      figures.findIndex((other) => figureKey(other) === figureKey(candidate)) === position,
+  )
+    ? figures
+    : fallbackOddOneOutFigures(oddIndex)
   return buildQuestion(rng, 'nvr', makeQuestionId(nonce, 'nvr', 'odd_one_out', index), {
     topic: 'odd_one_out',
     difficulty: difficultyAt(index),
@@ -371,6 +378,18 @@ function oddOneOutQuestion(rng: Rng, index: number, nonce: string): Question {
     timeTargetSeconds: 30,
     svgConfig: { layout: 'sequence', cells: [], optionFigures: figuresInOrder },
   })
+}
+
+/**
+ * Safety net for the odd-one-out sets: four plain squares and one different
+ * shape. Every option looks different, so the answer can always be spotted.
+ */
+function fallbackOddOneOutFigures(oddIndex: number): NvrFigure[] {
+  const figures: NvrFigure[] = []
+  for (let i = 0; i < 5; i += 1) {
+    figures.push(i === oddIndex ? figure('pentagon', 'empty') : figure('square', 'empty'))
+  }
+  return figures
 }
 
 function reflectionRotationQuestion(rng: Rng, index: number, nonce: string): Question {

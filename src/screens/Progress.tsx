@@ -57,7 +57,12 @@ function praiseForResult(result: QuizResult): string {
   return 'Good practise — these questions get easier each time you see them.'
 }
 
+const MISTAKE_PREVIEW = 5
+const SESSION_PREVIEW = 10
+
 export function Progress({ onNavigate }: ProgressProps) {
+  const [showAllMistakes, setShowAllMistakes] = useState(false)
+  const [showAllSessions, setShowAllSessions] = useState(false)
   const { activeProfileId } = useProfile()
   const [loading, setLoading] = useState(true)
   const [attempts, setAttempts] = useState<Attempt[]>([])
@@ -258,7 +263,7 @@ export function Progress({ onNavigate }: ProgressProps) {
           />
         ) : (
           <ul className="flex flex-col gap-3">
-            {mistakes.map((entry) => (
+            {(showAllMistakes ? mistakes : mistakes.slice(0, MISTAKE_PREVIEW)).map((entry) => (
               <li key={entry.question.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <SubjectBadge subject={entry.question.subject} />
@@ -297,6 +302,17 @@ export function Progress({ onNavigate }: ProgressProps) {
             ))}
           </ul>
         )}
+        {mistakes.length > MISTAKE_PREVIEW ? (
+          <button
+            type="button"
+            onClick={() => setShowAllMistakes((open) => !open)}
+            className={`${btnSecondaryClass} mt-3 w-full`}
+          >
+            {showAllMistakes
+              ? 'Show fewer mistakes'
+              : `Show all ${mistakes.length} mistakes (${mistakes.length - MISTAKE_PREVIEW} more)`}
+          </button>
+        ) : null}
       </section>
 
       <section className={cardClass}>
@@ -309,7 +325,7 @@ export function Progress({ onNavigate }: ProgressProps) {
           />
         ) : (
           <ul className="divide-y divide-slate-100">
-            {sessions.map((session) => (
+            {(showAllSessions ? sessions : sessions.slice(0, SESSION_PREVIEW)).map((session) => (
               <li key={session.id} className="flex items-center justify-between gap-3 py-3">
                 <div>
                   <p className="text-sm font-black text-slate-900">
@@ -324,6 +340,17 @@ export function Progress({ onNavigate }: ProgressProps) {
             ))}
           </ul>
         )}
+        {sessions.length > SESSION_PREVIEW ? (
+          <button
+            type="button"
+            onClick={() => setShowAllSessions((open) => !open)}
+            className={`${btnSecondaryClass} mt-3 w-full`}
+          >
+            {showAllSessions
+              ? 'Show fewer sessions'
+              : `Show all ${sessions.length} sessions (${sessions.length - SESSION_PREVIEW} more)`}
+          </button>
+        ) : null}
       </section>
     </div>
   )

@@ -1,6 +1,5 @@
 import { Heart, Sparkles, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { APP_VERSION, BUILD_TARGET } from '../../config/version'
 import { ElevenSparkLogo } from './ElevenSparkLogo'
 
 const SPECIAL_EDITION_KEY = 'elevenspark.special_edition'
@@ -98,9 +97,6 @@ function DedicationCard({ onClose }: { onClose: () => void }) {
           </div>
           <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-300">✨ Special Edition ✨</p>
           <h2 className="mt-1 text-2xl font-black text-white">Built Especially for You</h2>
-          <p className="mt-1 text-sm font-bold text-indigo-200">
-            ElevenSpark v{APP_VERSION} · {BUILD_TARGET}
-          </p>
         </div>
         <div className="space-y-3 px-6 py-5 text-center">
           <p className="text-base font-bold leading-relaxed text-slate-800">

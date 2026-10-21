@@ -31,14 +31,14 @@ const MOVE_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ['HEART', 'EARTH'],
   ['RINSE', 'RISEN'],
   ['SAINT', 'SATIN'],
-  ['CIDER', 'CRIED'],
+  ['CRATE', 'CATER'],
   ['SPARE', 'PARES'],
   ['TRIAL', 'TRAIL'],
   ['BEAST', 'BEATS'],
   ['NEAR', 'EARN'],
   ['SHARK', 'HARKS'],
   ['BREAD', 'BEARD'],
-  ['STARE', 'RATES'],
+  ['PLATE', 'PLEAT'],
   ['SHARE', 'HARES'],
 ]
 
@@ -157,10 +157,29 @@ function letterCodeQuestion(rng: Rng, index: number, nonce: string): Question {
   })
 }
 
+/**
+ * True when `to` can be built from `from` by lifting one letter out and
+ * sliding it somewhere else while the other letters keep their order.
+ */
+function canMoveOneLetter(from: string, to: string): boolean {
+  if (from.length !== to.length) return false
+  for (let i = 0; i < from.length; i += 1) {
+    const rest = from.slice(0, i) + from.slice(i + 1)
+    for (let j = 0; j <= rest.length; j += 1) {
+      if (rest.slice(0, j) + from[i] + rest.slice(j) === to) return true
+    }
+  }
+  return false
+}
+
 function moveOneLetterQuestion(rng: Rng, index: number, nonce: string): Question {
   const [from, to] = rng.pick(MOVE_PAIRS)
   const distractors = rng
-    .shuffle(MOVE_PAIRS.map((entry) => entry[1]).filter((word) => word !== to))
+    .shuffle(
+      MOVE_PAIRS.map((entry) => entry[1]).filter(
+        (word) => word !== to && !canMoveOneLetter(from, word),
+      ),
+    )
     .slice(0, 4)
   return buildQuestion(rng, 'vr', makeQuestionId(nonce, 'vr', 'move_one_letter', index), {
     topic: 'move_one_letter',

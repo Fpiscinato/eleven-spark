@@ -10,10 +10,12 @@ import { ScreenHeader, btnPrimaryClass, btnSecondaryClass, cardClass } from '../
 import { useParentGate } from '../context/ParentGateContext'
 import { VERSION_SEAL } from '../config/version'
 import { changePin, isValidPinFormat } from '../lib/admin'
+import { PARENT_LOCK_OPTIONS, useParentLockMinutes } from '../lib/parentAutoLock'
 import { THEME_CHANGED_EVENT, getStoredTheme, setThemeMode, type ThemeMode } from '../lib/themeMode'
 
 function ParentModeCard() {
   const { parentMode, requestUnlock, lockParentMode } = useParentGate()
+  const [lockMinutes, setLockMinutes] = useParentLockMinutes()
   return (
     <section className={cardClass}>
       <div className="flex items-center gap-3">
@@ -44,6 +46,29 @@ function ParentModeCard() {
         {parentMode ? <Lock className="h-5 w-5" aria-hidden="true" /> : <Unlock className="h-5 w-5" aria-hidden="true" />}
         {parentMode ? 'Lock Parent Mode' : 'Enter Parent Mode'}
       </button>
+      <div className="mt-4 border-t border-slate-200 pt-4">
+        <p className="text-sm font-black text-slate-900">Auto-lock timer</p>
+        <p className="mb-2 text-xs font-semibold text-slate-500">
+          Parent Mode locks itself after this much time without any activity.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {PARENT_LOCK_OPTIONS.map((minutes) => (
+            <button
+              key={minutes}
+              type="button"
+              onClick={() => setLockMinutes(minutes)}
+              aria-pressed={lockMinutes === minutes}
+              className={`min-h-[44px] rounded-2xl border-2 px-4 text-sm font-extrabold transition ${
+                lockMinutes === minutes
+                  ? 'border-indigo-600 bg-indigo-600 text-white'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              {minutes} min
+            </button>
+          ))}
+        </div>
+      </div>
     </section>
   )
 }
