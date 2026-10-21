@@ -7,6 +7,7 @@ import { VersionBadge } from './brand/VersionBadge'
 import { MotivationalCard } from './MotivationalCard'
 import { ProfileSwitcher } from './ProfileSwitcher'
 import { SyncStatusBadge } from './SyncStatusBadge'
+import { UpdateBanner } from './brand/UpdateBanner'
 import type { ScreenId } from '../types'
 
 const NAV_ITEMS = [
@@ -164,6 +165,7 @@ export function AppShell({ screen, onNavigate, children }: AppShellProps) {
 
       <main className="px-4 pb-28 pt-5 md:pb-10 md:pl-[272px] md:pr-8 md:pt-6">
         <div className="mx-auto max-w-5xl">
+          <UpdateBanner />
           {notice ? (
             <p
               className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900"

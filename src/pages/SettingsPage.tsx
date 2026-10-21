@@ -8,7 +8,7 @@ import { SafetySealCard } from '../components/SafetySealCard'
 import { SyncStatusSummary, openSyncSettings } from '../components/SyncStatusBadge'
 import { ScreenHeader, btnPrimaryClass, btnSecondaryClass, cardClass } from '../components/ui'
 import { useParentGate } from '../context/ParentGateContext'
-import { VERSION_SEAL } from '../config/version'
+import { APP_VERSION, QUESTION_BANK_VERSION, RELEASE_NOTES, VERSION_SEAL } from '../config/version'
 import { changePin, isValidPinFormat } from '../lib/admin'
 import { PARENT_LOCK_OPTIONS, useParentLockMinutes } from '../lib/parentAutoLock'
 import { THEME_CHANGED_EVENT, getStoredTheme, setThemeMode, type ThemeMode } from '../lib/themeMode'
@@ -259,6 +259,45 @@ function ThemeCard() {
   )
 }
 
+/** Shows the running version so a parent can confirm the app really updated. */
+function AppVersionCard() {
+  return (
+    <section className={cardClass}>
+      <h2 className="mb-1 text-base font-black text-slate-900">App version</h2>
+      <p className="mb-3 text-sm font-bold text-slate-500">
+        This is the version running on this device. After an update it changes and a banner appears
+        at the top of the screen.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full border-2 border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-extrabold text-indigo-800">
+          v{APP_VERSION}
+        </span>
+        <span className="rounded-full border-2 border-slate-200 bg-slate-50 px-3 py-1 text-sm font-extrabold text-slate-700">
+          Bank v{QUESTION_BANK_VERSION}
+        </span>
+        <span className="rounded-full border-2 border-slate-200 bg-white px-3 py-1 text-xs font-extrabold text-slate-500">
+          {VERSION_SEAL}
+        </span>
+      </div>
+      {RELEASE_NOTES.length > 0 ? (
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">
+            What&apos;s new in v{APP_VERSION}
+          </p>
+          <ul className="grid gap-1.5">
+            {RELEASE_NOTES.map((note) => (
+              <li key={note} className="flex items-start gap-2 text-sm font-bold text-slate-700">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" aria-hidden="true" />
+                <span>{note}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
 export function SettingsPage() {
   const { parentMode } = useParentGate()
   return (
@@ -295,6 +334,8 @@ export function SettingsPage() {
       <LocalSnapshotsCard />
 
       <SafetySealCard />
+
+      <AppVersionCard />
 
       <DataResetCard />
 

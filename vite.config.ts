@@ -16,6 +16,9 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // The app registers the worker itself (src/components/brand/UpdateBanner.tsx)
+      // so it can show a friendly "new version ready" banner.
+      injectRegister: null,
       includeAssets: [
         'favicon.svg',
         'favicon.ico',
