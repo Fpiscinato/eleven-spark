@@ -39,6 +39,23 @@ jobs:
       - name: Type-check and build
         run: npm run build
 
+      # A missing secret must fail with an actionable message, not with a
+      # cryptic wrangler error.
+      - name: Check the Cloudflare credentials
+        run: |
+          missing=""
+          [ -z "$CLOUDFLARE_API_TOKEN" ] && missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -z "$CLOUDFLARE_ACCOUNT_ID" ] && missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing GitHub Actions secret(s):$missing"
+            echo ""
+            echo "Add them in Settings -> Secrets and variables -> Actions:"
+            echo "  CLOUDFLARE_API_TOKEN  = a Cloudflare API token (Workers Scripts: Edit)"
+            echo "  CLOUDFLARE_ACCOUNT_ID = the Cloudflare account ID"
+            exit 1
+          fi
+          echo "Cloudflare credentials found."
+
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
