@@ -384,7 +384,7 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
   const progressPercent = ((index + 1) / run.questions.length) * 100
 
   return (
-    <div className="md:fixed md:inset-0 md:z-50 md:flex md:justify-center md:bg-slate-50 md:px-6 md:py-4">
+    <div className="fixed inset-0 z-50 flex justify-center overflow-y-auto bg-slate-100 px-3 py-3 md:overflow-hidden md:px-6 md:py-4">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-2 md:h-full md:min-h-0 md:overflow-hidden">
       <header className="flex shrink-0 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-2.5 py-1.5 shadow-sm">
         <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -472,7 +472,7 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
         </div>
       </div>
 
-      <footer className="sticky bottom-[calc(64px+env(safe-area-inset-bottom))] z-20 -mx-4 shrink-0 border-t-2 border-slate-200 bg-white px-4 py-2.5 md:static md:mx-0 md:rounded-2xl md:border-2 md:border-slate-200 md:shadow-sm">
+      <footer className="sticky bottom-[env(safe-area-inset-bottom)] z-20 -mx-3 shrink-0 border-t-2 border-slate-200 bg-white px-3 py-2.5 md:static md:mx-0 md:rounded-2xl md:border-2 md:border-slate-200 md:shadow-sm">
         {isConfirmed ? (
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap gap-2">
