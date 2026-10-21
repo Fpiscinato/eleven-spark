@@ -23,6 +23,7 @@ import {
 import { db } from '../db/database'
 import type { NavParams, ScreenId } from '../types'
 import { PageSpinner, ScreenHeader, StatCard, cardClass } from '../components/ui'
+import { PhaseCards } from '../components/PhaseCards'
 import type { Session } from '../db/schemas'
 
 function greeting(): string {
@@ -43,26 +44,28 @@ function SparkWidget({ plan, answeredToday, onNavigate }: {
 }) {
   const done = answeredToday >= 20
   return (
-    <section className="rounded-3xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-amber-50 p-5 shadow-sm md:p-6">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl" aria-hidden="true">⚡</span>
-          <h2 className="text-lg font-black text-slate-900">Today's 20-Minute Spark</h2>
+    <section className="rounded-3xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-amber-50 p-4 shadow-sm sm:p-5 md:p-6">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="text-2xl leading-none" aria-hidden="true">⚡</span>
+          <h2 className="text-base font-black leading-tight text-slate-900 sm:text-lg">
+            Today's 20-Minute Spark
+          </h2>
         </div>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-indigo-700 ring-1 ring-indigo-200">
+        <span className="w-fit shrink-0 rounded-full bg-white px-3 py-1 text-xs font-extrabold text-indigo-700 ring-1 ring-indigo-200">
           {answeredToday}/20 done today
         </span>
       </div>
       <p className="text-base font-black text-slate-800">{plan.task.title}</p>
       <p className="mt-1 text-sm font-semibold text-slate-600">{plan.task.detail}</p>
       <p className="mt-2 text-xs font-bold text-slate-500">{plan.reason}</p>
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="mt-4 flex flex-wrap gap-2 sm:gap-3">
         <span className="inline-flex items-center gap-1.5 rounded-2xl bg-white px-3 py-1.5 text-sm font-extrabold text-slate-700 ring-1 ring-slate-200">
-          <Timer className="h-4 w-4 text-indigo-600" aria-hidden="true" />
+          <Timer className="h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />
           ~{plan.task.minutes} min
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-2xl bg-white px-3 py-1.5 text-sm font-extrabold text-slate-700 ring-1 ring-slate-200">
-          <Zap className="h-4 w-4 text-amber-500" aria-hidden="true" />
+          <Zap className="h-4 w-4 shrink-0 text-amber-500" aria-hidden="true" />
           {plan.task.questions} questions
         </span>
       </div>
@@ -72,63 +75,11 @@ function SparkWidget({ plan, answeredToday, onNavigate }: {
           if (plan.task.id === 'mini_mock') onNavigate('mock')
           else onNavigate('practice')
         }}
-        className="mt-4 inline-flex min-h-[48px] items-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3 text-base font-extrabold text-white transition hover:bg-indigo-700 active:scale-[0.98]"
+        className="mt-4 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-5 py-3 text-base font-extrabold text-white transition hover:bg-indigo-700 active:scale-[0.98] sm:w-auto sm:px-6"
       >
         <Rocket className="h-5 w-5" aria-hidden="true" />
         {done ? 'Do a bonus round' : 'Start my Spark'}
       </button>
-    </section>
-  )
-}
-
-function PhaseCards({ roadmap }: { roadmap: RoadmapSnapshot }) {
-  return (
-    <section aria-labelledby="phases-heading">
-      <h2 id="phases-heading" className="mb-3 text-lg font-black text-slate-900">
-        Your 3-phase roadmap
-      </h2>
-      <div className="grid gap-3 lg:grid-cols-3">
-        {roadmap.phases.map((phase) => {
-          const current = phase.id === roadmap.currentPhaseId
-          return (
-            <div
-              key={phase.id}
-              className={`${cardClass} flex flex-col gap-3 ${current ? 'border-2 border-indigo-400 bg-indigo-50' : ''}`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-base font-black text-slate-900">{phase.title}</p>
-                  <p className="text-xs font-bold text-slate-500">{phase.window}</p>
-                </div>
-                {current ? (
-                  <span className="rounded-full bg-indigo-600 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-white">
-                    Now
-                  </span>
-                ) : null}
-              </div>
-              <p className="text-sm font-semibold text-slate-600">{phase.headline}</p>
-              <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${phase.percent}%` }} />
-              </div>
-              <p className="text-sm font-black text-indigo-700">{phase.percent}% complete</p>
-              <ul className="flex flex-col gap-1.5">
-                {phase.goals.map((goal) => (
-                  <li key={goal.label} className="flex items-center justify-between gap-2 text-xs font-bold">
-                    <span className={goal.met ? 'text-emerald-700' : 'text-slate-600'}>
-                      {goal.met ? '✓' : '○'} {goal.label}
-                    </span>
-                    <span className="tabular-nums text-slate-500">
-                      {goal.unit === 'percent'
-                        ? `${goal.achieved}% / ${goal.value}%`
-                        : `${goal.achieved} / ${goal.value}`}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )
-        })}
-      </div>
     </section>
   )
 }

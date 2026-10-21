@@ -7,8 +7,9 @@ import type { Attempt, Session, Subject } from '../db/schemas'
 import { SUBJECTS } from '../db/schemas'
 import { getCompletedSessions, getAllAttempts } from '../lib/stats'
 import { SUBJECT_META } from '../lib/theme'
-import { masteryFor } from '../utils/roadmapCalculator'
+import { computeRoadmap, masteryFor, type RoadmapSnapshot } from '../utils/roadmapCalculator'
 import { EmptyState, PageSpinner, ScreenHeader, btnPrimaryClass, cardClass } from '../components/ui'
+import { PhaseCards } from '../components/PhaseCards'
 import type { NavParams, ScreenId } from '../types'
 
 interface AnalyticsPageProps {
@@ -210,6 +211,7 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
   const [loading, setLoading] = useState(true)
   const [mockSessions, setMockSessions] = useState<Session[]>([])
   const [cells, setCells] = useState<TopicCell[]>([])
+  const [roadmap, setRoadmap] = useState<RoadmapSnapshot | null>(null)
 
   const load = useCallback(async () => {
     const [attempts, sessions] = await Promise.all([
@@ -284,6 +286,9 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
 
     setMockSessions(mocks)
     setCells(topicCells)
+
+    const allSessions = await db.sessions.where('profileId').equals(activeProfileId).toArray()
+    setRoadmap(computeRoadmap({ attempts, sessions: allSessions, questionTimeTargets: targetById }))
     setLoading(false)
   }, [activeProfileId])
 
@@ -323,6 +328,12 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
             )
           })}
         </div>
+
+        {roadmap ? (
+          <div className="mb-5">
+            <PhaseCards roadmap={roadmap} />
+          </div>
+        ) : null}
 
         {cells.length === 0 ? (
           <section className={cardClass}>
@@ -413,6 +424,12 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
           </div>
         </div>
       </section>
+
+      {roadmap ? (
+        <section className={`${cardClass} mb-5`}>
+          <PhaseCards roadmap={roadmap} />
+        </section>
+      ) : null}
 
       <section className={`${cardClass} mb-5`}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -574,12 +591,6 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
           </button>
         </div>
       </section>
-
-      <div className="mt-5">
-        <button type="button" onClick={() => onNavigate('dashboard')} className={btnPrimaryClass}>
-          Back to Home
-        </button>
-      </div>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { db } from '../db/database'
 import { DEFAULT_PROFILE_ID, type Profile } from '../db/schemas'
+import { PROFILES_CHANGED_EVENT } from '../lib/admin'
 
 const ACTIVE_PROFILE_KEY = 'elevenspark.active_profile_id'
 
@@ -74,6 +75,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         targetSchool: patch.targetSchool.trim().slice(0, 80),
         updatedAt: Date.now(),
       })
+      window.dispatchEvent(new CustomEvent(PROFILES_CHANGED_EVENT))
       await refresh()
     },
     [refresh],
@@ -92,6 +94,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         createdAt: now,
         updatedAt: now,
       })
+      window.dispatchEvent(new CustomEvent(PROFILES_CHANGED_EVENT))
       await refresh()
       persistActive(id)
     },

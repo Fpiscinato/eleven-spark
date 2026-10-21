@@ -1,8 +1,13 @@
 import { db } from '../db/database'
 import type { SectionBreakdownEntry, SessionMode } from '../db/schemas'
+import { DATA_CHANGED_EVENT } from './events'
 import { uid } from './format'
 
 export const MISTAKES_CLEARED_PREFIX = 'elevenspark.mistakes_cleared_at:'
+
+function notifyDataChanged(): void {
+  window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT))
+}
 
 export function mistakesClearedKey(profileId: string): string {
   return `${MISTAKES_CLEARED_PREFIX}${profileId}`
@@ -45,6 +50,7 @@ export async function completeSession(
     scorePercentage: patch.scorePercentage,
     sectionBreakdown: patch.sectionBreakdown,
   })
+  notifyDataChanged()
 }
 
 export async function abandonSession(sessionId: string, totalTimeSeconds: number): Promise<void> {

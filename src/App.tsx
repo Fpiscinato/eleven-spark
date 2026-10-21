@@ -1,8 +1,9 @@
-import { Sparkles } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { AppShell } from './components/AppShell'
+import { ElevenSparkLogo } from './components/brand/ElevenSparkLogo'
+import { Onboarding } from './components/Onboarding'
 import { SUBJECTS, type Subject } from './db/schemas'
-import { initializeDatabase } from './db/database'
+import { db, initializeDatabase } from './db/database'
 import { ProfileProvider } from './context/ProfileContext'
 import { ParentGateProvider } from './context/ParentGateContext'
 import { Dashboard } from './screens/Dashboard'
@@ -14,6 +15,9 @@ import { GuidePage } from './pages/GuidePage'
 import { SettingsPage } from './pages/SettingsPage'
 import { SpecialDedicationHost } from './components/brand/SpecialDedicationModal'
 import { startSyncListeners } from './services/gistSync'
+import { maybeAutoSnapshot, startSnapshotWatcher } from './services/localSnapshots'
+import { readSafetySeal, runSafetyCheck } from './services/safetySeal'
+import { QUESTION_BANK_VERSION } from './config/version'
 import type { NavParams, ScreenId } from './types'
 
 interface RouteState {
@@ -55,14 +59,34 @@ function buildHash(screen: ScreenId, params: NavParams): string {
 
 export default function App() {
   const [booted, setBooted] = useState(false)
+  const [profileChecked, setProfileChecked] = useState(false)
+  const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const [route, setRoute] = useState<RouteState>(() => parseHash())
 
   useEffect(() => {
+    let stopWatcher: (() => void) | null = null
     void initializeDatabase().then(() => {
       setBooted(true)
       startSyncListeners()
+      stopWatcher = startSnapshotWatcher()
+      void maybeAutoSnapshot()
+      const seal = readSafetySeal()
+      if (!seal || seal.bankVersion !== String(QUESTION_BANK_VERSION)) {
+        void runSafetyCheck()
+      }
     })
+    return () => {
+      if (stopWatcher) stopWatcher()
+    }
   }, [])
+
+  useEffect(() => {
+    if (!booted) return
+    void db.profiles.count().then((count) => {
+      setNeedsOnboarding(count === 0)
+      setProfileChecked(true)
+    })
+  }, [booted])
 
   useEffect(() => {
     const onHashChange = () => setRoute(parseHash())
@@ -74,12 +98,12 @@ export default function App() {
     window.location.hash = buildHash(screen, params)
   }, [])
 
-  if (!booted) {
+  if (!booted || !profileChecked) {
     return (
       <div className="grid min-h-screen place-items-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
           <div className="grid h-16 w-16 animate-pulse place-items-center rounded-3xl bg-indigo-600 text-white">
-            <Sparkles className="h-8 w-8" aria-hidden="true" />
+            <ElevenSparkLogo className="h-11 w-auto" />
           </div>
           <p className="text-base font-extrabold text-slate-600">Setting up your practice desk...</p>
         </div>
@@ -90,21 +114,25 @@ export default function App() {
   return (
     <ProfileProvider>
       <ParentGateProvider>
-        <AppShell screen={route.screen} onNavigate={(screen) => navigate(screen)}>
-          {route.screen === 'dashboard' ? <Dashboard onNavigate={navigate} /> : null}
-          {route.screen === 'practice' ? (
-            <PracticePage
-              key={`practice-${route.params.subject ?? 'all'}-${route.params.topic ?? 'all'}`}
-              params={route.params}
-              onNavigate={navigate}
-            />
-          ) : null}
-          {route.screen === 'mock' ? <MockExamPage onNavigate={navigate} /> : null}
-          {route.screen === 'progress' ? <Progress onNavigate={navigate} /> : null}
-          {route.screen === 'analytics' ? <AnalyticsPage onNavigate={navigate} /> : null}
-          {route.screen === 'guide' ? <GuidePage onNavigate={navigate} /> : null}
-          {route.screen === 'settings' ? <SettingsPage /> : null}
-        </AppShell>
+        {needsOnboarding ? (
+          <Onboarding onComplete={() => setNeedsOnboarding(false)} />
+        ) : (
+          <AppShell screen={route.screen} onNavigate={(screen) => navigate(screen)}>
+            {route.screen === 'dashboard' ? <Dashboard onNavigate={navigate} /> : null}
+            {route.screen === 'practice' ? (
+              <PracticePage
+                key={`practice-${route.params.subject ?? 'all'}-${route.params.topic ?? 'all'}`}
+                params={route.params}
+                onNavigate={navigate}
+              />
+            ) : null}
+            {route.screen === 'mock' ? <MockExamPage onNavigate={navigate} /> : null}
+            {route.screen === 'progress' ? <Progress onNavigate={navigate} /> : null}
+            {route.screen === 'analytics' ? <AnalyticsPage onNavigate={navigate} /> : null}
+            {route.screen === 'guide' ? <GuidePage onNavigate={navigate} /> : null}
+            {route.screen === 'settings' ? <SettingsPage /> : null}
+          </AppShell>
+        )}
         <SpecialDedicationHost />
       </ParentGateProvider>
     </ProfileProvider>

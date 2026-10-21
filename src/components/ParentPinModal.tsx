@@ -1,49 +1,99 @@
-import { Delete, Lock, X } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { Check, Delete, Lock, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { btnPrimaryClass, btnSecondaryClass } from './ui'
 
-const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back']
+const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'delete', '0', 'confirm']
+
+const PIN_PATTERN = /^\d{4,6}$/
 
 interface ParentPinModalProps {
   open: boolean
-  onSubmit: (pin: string) => void
+  onSubmit: (pin: string) => boolean
   onCancel: () => void
 }
 
 export function ParentPinModal({ open, onSubmit, onCancel }: ParentPinModalProps) {
   const [pin, setPin] = useState('')
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const pinRef = useRef('')
+
+  useEffect(() => {
+    pinRef.current = pin
+  }, [pin])
 
   useEffect(() => {
     if (open) {
       setPin('')
-      setError(false)
+      setError(null)
     }
   }, [open])
 
+  const submitPin = useCallback(
+    (value: string) => {
+      if (!PIN_PATTERN.test(value)) {
+        setError('Enter your 4 to 6 digit PIN.')
+        return
+      }
+      const accepted = onSubmit(value)
+      if (!accepted) {
+        setError('Incorrect PIN. Try again')
+        setPin('')
+      }
+    },
+    [onSubmit],
+  )
+
+  useEffect(() => {
+    if (!open) return
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onCancel()
+        return
+      }
+      if (/^[0-9]$/.test(event.key)) {
+        setError(null)
+        setPin((current) => (current.length >= 6 ? current : current + event.key))
+        return
+      }
+      if (event.key === 'Backspace') {
+        setError(null)
+        setPin((current) => current.slice(0, -1))
+        return
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        submitPin(pinRef.current)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [open, onCancel, submitPin])
+
   const appendDigit = useCallback((digit: string) => {
-    setError(false)
+    setError(null)
     setPin((current) => (current.length >= 6 ? current : current + digit))
   }, [])
 
   const backspace = useCallback(() => {
-    setError(false)
+    setError(null)
     setPin((current) => current.slice(0, -1))
   }, [])
 
   const submit = useCallback(() => {
-    if (pin.length < 4) {
-      setError(true)
-      return
-    }
-    onSubmit(pin)
-  }, [pin, onSubmit])
+    submitPin(pin)
+  }, [pin, submitPin])
 
   if (!open) return null
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4" role="dialog" aria-modal="true" aria-label="Parent Mode PIN">
-      <div className="w-full max-w-sm rounded-3xl border border-slate-700 bg-slate-900 p-6 text-white shadow-2xl">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto overscroll-contain bg-slate-900/70 p-4 py-6 sm:py-10"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Parent Mode PIN"
+    >
+      <div className="my-auto w-full max-w-sm rounded-3xl border border-slate-700 bg-slate-900 p-6 text-white shadow-2xl">
         <div className="mb-4 flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="grid h-11 w-11 place-items-center rounded-2xl bg-slate-800 text-amber-400">
@@ -81,16 +131,17 @@ export function ParentPinModal({ open, onSubmit, onCancel }: ParentPinModalProps
           ))}
         </div>
         {error ? (
-          <p className="mb-3 text-center text-sm font-bold text-rose-300">That PIN is not right. Try again.</p>
+          <p className="mb-3 text-center text-sm font-bold text-rose-300" role="alert">
+            {error}
+          </p>
         ) : null}
 
         <div className="mb-5 grid grid-cols-3 gap-2">
           {KEYS.map((key, index) => {
-            if (key === '') return <span key={`gap-${index}`} aria-hidden="true" />
-            if (key === 'back') {
+            if (key === 'delete') {
               return (
                 <button
-                  key="back"
+                  key="delete"
                   type="button"
                   onClick={backspace}
                   className="grid min-h-[56px] place-items-center rounded-2xl bg-slate-800 text-slate-300 transition hover:bg-slate-700 active:scale-95"
@@ -100,9 +151,22 @@ export function ParentPinModal({ open, onSubmit, onCancel }: ParentPinModalProps
                 </button>
               )
             }
+            if (key === 'confirm') {
+              return (
+                <button
+                  key="confirm"
+                  type="button"
+                  onClick={submit}
+                  className="grid min-h-[56px] place-items-center rounded-2xl bg-amber-500 text-slate-900 transition hover:bg-amber-400 active:scale-95"
+                  aria-label="Confirm PIN"
+                >
+                  <Check className="h-6 w-6" aria-hidden="true" />
+                </button>
+              )
+            }
             return (
               <button
-                key={key}
+                key={`digit-${key}-${index}`}
                 type="button"
                 onClick={() => appendDigit(key)}
                 className="min-h-[56px] rounded-2xl bg-slate-800 text-xl font-black text-white transition hover:bg-slate-700 active:scale-95"
@@ -122,6 +186,7 @@ export function ParentPinModal({ open, onSubmit, onCancel }: ParentPinModalProps
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

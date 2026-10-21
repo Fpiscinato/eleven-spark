@@ -1,3 +1,10 @@
+export const LETTERS = ['A', 'B', 'C', 'D', 'E'] as const
+
+export function letterFor(index: number | null | undefined): string {
+  if (index === null || index === undefined || index < 0 || index >= LETTERS.length) return '—'
+  return LETTERS[index] ?? '—'
+}
+
 export function uid(): string {
   return crypto.randomUUID()
 }

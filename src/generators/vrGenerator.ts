@@ -1,4 +1,5 @@
 import type { Question } from '../db/schemas'
+import { isCodeSafe } from '../utils/childSafetyGuard'
 import {
   alphabetRuler,
   buildQuestion,
@@ -94,10 +95,30 @@ function alphabetIndex(ch: string): number {
   return ch.charCodeAt(0) - 65
 }
 
+/**
+ * Picks two real words and the shift for the secret code so that neither the
+ * words nor the coded strings can accidentally spell something a child should
+ * never read (for example "SEX" hiding inside a letter series).
+ */
+function pickSafeCodeWords(rng: Rng): { example: string; question: string; shift: number } {
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    const example = rng.pick(CODE_WORDS)
+    const question = rng.pick(CODE_WORDS.filter((word) => word !== example))
+    const shift = rng.int(1, 3)
+    const coded = [example, question, shiftWord(example, shift), shiftWord(question, shift)]
+    for (let extra = 1; extra <= 3; extra += 1) {
+      coded.push(shiftWord(question, shift + extra), shiftWord(question, -extra))
+    }
+    if (coded.every((entry) => isCodeSafe(entry))) return { example, question, shift }
+  }
+  const safeWord = CODE_WORDS.find((word) => isCodeSafe(word)) ?? CODE_WORDS[0] ?? 'CLOUD'
+  const otherSafe =
+    CODE_WORDS.find((word) => word !== safeWord && isCodeSafe(word)) ?? CODE_WORDS[1] ?? 'RAIN'
+  return { example: safeWord, question: otherSafe, shift: 1 }
+}
+
 function letterCodeQuestion(rng: Rng, index: number, nonce: string): Question {
-  const exampleWord = rng.pick(CODE_WORDS)
-  const questionWord = rng.pick(CODE_WORDS.filter((word) => word !== exampleWord))
-  const shift = rng.int(1, 3)
+  const { example: exampleWord, question: questionWord, shift } = pickSafeCodeWords(rng)
   const exampleCoded = shiftWord(exampleWord, shift)
   const questionCoded = shiftWord(questionWord, shift)
 
@@ -182,14 +203,7 @@ function hiddenWordQuestion(rng: Rng, index: number, nonce: string): Question {
   })
 }
 
-function pairSeriesQuestion(rng: Rng, index: number, nonce: string): Question {
-  const start = rng.int(0, 14)
-  const gap = rng.int(1, 3)
-  const advance = rng.int(2, 4)
-  const pairAt = (step: number): string =>
-    `${letterAt(start + step * advance)}${letterAt(start + step * advance + gap)}`
-  const terms = [pairAt(0), pairAt(1), pairAt(2)]
-  const answer = pairAt(3)
+function buildPairDistractors(answer: string, nextPair: string): string[] {
   const distractors: string[] = []
   const bumpCandidates = [1, -1, 2, -2, 3, 4, 5]
   for (const offset of bumpCandidates) {
@@ -197,7 +211,6 @@ function pairSeriesQuestion(rng: Rng, index: number, nonce: string): Question {
     if (candidate !== answer && !distractors.includes(candidate)) distractors.push(candidate)
     if (distractors.length === 4) break
   }
-  const nextPair = pairAt(4)
   if (nextPair !== answer && !distractors.includes(nextPair) && distractors.length < 4) {
     distractors.push(nextPair)
   }
@@ -207,6 +220,29 @@ function pairSeriesQuestion(rng: Rng, index: number, nonce: string): Question {
     }`
     if (candidate !== answer && !distractors.includes(candidate)) distractors.push(candidate)
   }
+  return distractors
+}
+
+function pairSeriesQuestion(rng: Rng, index: number, nonce: string): Question {
+  let start = rng.int(0, 14)
+  let gap = rng.int(1, 3)
+  let advance = rng.int(2, 4)
+  let terms: string[] = []
+  let answer = ''
+  let distractors: string[] = []
+
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    start = rng.int(0, 14)
+    gap = rng.int(1, 3)
+    advance = rng.int(2, 4)
+    const pairAt = (step: number): string =>
+      `${letterAt(start + step * advance)}${letterAt(start + step * advance + gap)}`
+    terms = [pairAt(0), pairAt(1), pairAt(2)]
+    answer = pairAt(3)
+    distractors = buildPairDistractors(answer, pairAt(4))
+    if (isCodeSafe([...terms, answer, ...distractors].join(''))) break
+  }
+
   return buildQuestion(rng, 'vr', makeQuestionId(nonce, 'vr', 'letter_series', index), {
     topic: 'letter_series',
     difficulty: difficultyAt(index),
@@ -219,14 +255,24 @@ function pairSeriesQuestion(rng: Rng, index: number, nonce: string): Question {
 }
 
 function letterRunSeriesQuestion(rng: Rng, index: number, nonce: string): Question {
-  const start = rng.int(0, 10)
-  const firstGap = rng.int(1, 3)
-  const positions = [start]
-  for (let i = 1; i <= 5; i += 1) {
-    positions.push((positions[i - 1] ?? start) + firstGap + i - 1)
+  let start = rng.int(0, 10)
+  let firstGap = rng.int(1, 3)
+  let positions: number[] = []
+  let terms: string[] = []
+  let answerPosition = start
+
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    start = rng.int(0, 10)
+    firstGap = rng.int(1, 3)
+    positions = [start]
+    for (let i = 1; i <= 5; i += 1) {
+      positions.push((positions[i - 1] ?? start) + firstGap + i - 1)
+    }
+    terms = positions.slice(0, 5).map((position) => letterAt(position))
+    answerPosition = positions[5] ?? start
+    if (isCodeSafe([...terms, letterAt(answerPosition)].join(''))) break
   }
-  const terms = positions.slice(0, 5).map((position) => letterAt(position))
-  const answerPosition = positions[5] ?? start
+
   return buildQuestion(rng, 'vr', makeQuestionId(nonce, 'vr', 'letter_series', index), {
     topic: 'letter_series',
     difficulty: difficultyAt(index),
@@ -324,7 +370,13 @@ function synonymAntonymQuestion(rng: Rng, index: number, nonce: string): Questio
 
 function letterNumberQuestion(rng: Rng, index: number, nonce: string): Question {
   if (index % 2 === 0) {
-    const letters = rng.shuffle(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']).slice(0, 4)
+    const pool = rng.shuffle(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'])
+    const letters = pool.slice(0, 4)
+    const isVowel = (ch: string | undefined): boolean => ch === 'A' || ch === 'E'
+    if (!letters.slice(0, 3).some(isVowel)) {
+      const spareVowel = pool.find((ch) => isVowel(ch) && !letters.includes(ch))
+      if (spareVowel) letters[2] = spareVowel
+    }
     const [l1, l2, l3, l4] = [
       letters[0] ?? 'A',
       letters[1] ?? 'B',

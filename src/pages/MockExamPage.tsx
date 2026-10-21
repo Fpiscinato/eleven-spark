@@ -1,4 +1,4 @@
-import { ClipboardList, Flag, Lock, LockOpen, PencilLine, Printer, Trophy } from 'lucide-react'
+import { ClipboardList, Flag, Info, Lock, LockOpen, PencilLine, Printer, Trophy } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MathText } from '../components/exam/MathText'
 import { NvrSvgRenderer } from '../components/exam/NvrSvgRenderer'
@@ -24,6 +24,20 @@ import type { ScreenId } from '../types'
 type Phase = 'intro' | 'running' | 'transition' | 'results'
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E']
+
+const OMR_INSTRUCTIONS =
+  'Use this tool to quickly input answers from your printed OMR paper sheet to instantly grade mock exams and update analytics.'
+
+function OmrInstructionsCard({ className = '' }: { className?: string }) {
+  return (
+    <p
+      className={`flex items-start gap-2 rounded-2xl border border-sky-200 bg-white/80 p-3 text-sm font-semibold leading-relaxed text-sky-950 ${className}`}
+    >
+      <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" aria-hidden="true" />
+      <span>{OMR_INSTRUCTIONS}</span>
+    </p>
+  )
+}
 
 interface ReportDetail {
   question: Question
@@ -354,6 +368,8 @@ function OmrGradeOverlay({ mode, counts, onSelectMode, onClose, onGrade }: OmrGr
           Type the letters you marked on the printed sheet, in order — one letter per question. Spaces,
           commas and dashes are ignored. Unanswered rows stay blank.
         </p>
+
+        <OmrInstructionsCard className="mb-4" />
 
         <div className="flex flex-col gap-4">
           {config.sections.map((section, sectionIndex) => {
@@ -870,6 +886,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
               Quick Grade Paper OMR
             </button>
           </div>
+          <OmrInstructionsCard className="mt-4" />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">

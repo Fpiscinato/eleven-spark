@@ -15,6 +15,7 @@ import {
 } from '../lib/admin'
 import { resetQuickPractice } from '../lib/sessionHelpers'
 import { useParentGate } from '../context/ParentGateContext'
+import { Modal } from './Modal'
 import { EmptyState, ScreenHeader, btnPrimaryClass, btnSecondaryClass, cardClass } from './ui'
 
 const AVATAR_CHOICES = ['🌟', '🚀', '🦁', '🦋', '🐉', '🎨', '🚴', '🔬']
@@ -36,11 +37,11 @@ function confirmCopy(state: ConfirmState): string {
     case 'delete':
       return `Delete ${state.profileName}'s profile, all sessions and all answers? This cannot be undone.`
     case 'reset_all':
-      return `Reset ALL progress for ${state.profileName}? Every practice, mock and answer will be removed.`
+      return `Reset ALL progress for ${state.profileName}? Every practice, unfinished mock and answer will be removed. Finished mock papers are kept for good as the official record.`
     case 'reset_practice':
       return `Reset Quick Practice history for ${state.profileName}? Mock papers are kept.`
     case 'reset_mocks':
-      return `Reset all mock papers for ${state.profileName}? Quick Practice is kept.`
+      return `Reset the mock papers for ${state.profileName}? Unfinished and abandoned mocks are removed. Finished mock papers are kept for good as the official record, and Quick Practice is kept.`
     case 'reset_mistakes':
       return `Clear the Mistake Bank for ${state.profileName}? Open mistakes will stop showing in the clinic.`
   }
@@ -126,7 +127,13 @@ export function ProfileManager() {
         }
         case 'reset_all': {
           const result = await resetAllProgress(confirm.profileId)
-          setNote(`Removed ${result.sessionsRemoved} sessions and ${result.attemptsRemoved} answers.`)
+          setNote(
+            `Removed ${result.sessionsRemoved} sessions and ${result.attemptsRemoved} answers.${
+              result.sessionsKept > 0
+                ? ` Kept ${result.sessionsKept} finished mock paper${result.sessionsKept === 1 ? '' : 's'}.`
+                : ''
+            }`,
+          )
           break
         }
         case 'reset_practice': {
@@ -136,7 +143,13 @@ export function ProfileManager() {
         }
         case 'reset_mocks': {
           const result = await resetMocks(confirm.profileId)
-          setNote(`Removed ${result.sessionsRemoved} mock papers.`)
+          setNote(
+            `Removed ${result.sessionsRemoved} mock papers.${
+              result.sessionsKept > 0
+                ? ` Kept ${result.sessionsKept} finished mock paper${result.sessionsKept === 1 ? '' : 's'}.`
+                : ''
+            }`,
+          )
           break
         }
         case 'reset_mistakes':
@@ -156,7 +169,7 @@ export function ProfileManager() {
       <div className={cardClass}>
         <EmptyState
           icon={RotateCcw}
-          title="Parent Dashboard is locked"
+          title="Settings is locked"
           body="Enter Parent Mode to manage profiles, reset progress and change settings."
         />
         <button
@@ -281,13 +294,8 @@ export function ProfileManager() {
       )}
 
       {editor ? (
-        <div
-          className="fixed inset-0 z-[90] grid place-items-center overflow-y-auto bg-slate-900/50 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label={editor.mode === 'edit' ? 'Edit profile' : 'New profile'}
-        >
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+        <Modal open onClose={() => setEditor(null)} label={editor.mode === 'edit' ? 'Edit profile' : 'New profile'}>
+          <div className="w-full rounded-3xl bg-white p-6 shadow-xl">
             <h2 className="mb-4 text-lg font-black text-slate-900">
               {editor.mode === 'edit' ? 'Edit profile' : 'New profile'}
             </h2>
@@ -357,17 +365,12 @@ export function ProfileManager() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       ) : null}
 
       {confirm ? (
-        <div
-          className="fixed inset-0 z-[90] grid place-items-center bg-slate-900/50 p-4"
-          role="alertdialog"
-          aria-modal="true"
-          aria-label="Confirm action"
-        >
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+        <Modal open onClose={() => setConfirm(null)} label="Confirm action">
+          <div className="w-full rounded-3xl bg-white p-6 shadow-xl">
             <h2 className="mb-3 text-lg font-black text-slate-900">Are you sure?</h2>
             <p className="mb-5 text-sm font-semibold leading-relaxed text-slate-600">{confirmCopy(confirm)}</p>
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -384,7 +387,7 @@ export function ProfileManager() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       ) : null}
     </div>
   )

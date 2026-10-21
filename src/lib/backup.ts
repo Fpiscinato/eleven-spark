@@ -1,4 +1,4 @@
-import { db, defaultProfiles } from '../db/database'
+import { db } from '../db/database'
 import { backupSchema, type Backup } from '../db/schemas'
 
 export async function buildBackup(): Promise<Backup> {
@@ -73,7 +73,7 @@ export async function restoreBackup(backup: Backup): Promise<void> {
       await db.questions.clear()
       await db.sessions.clear()
       await db.attempts.clear()
-      const profiles = backup.profiles.length > 0 ? backup.profiles : defaultProfiles()
+      const profiles = backup.profiles
       await db.profiles.bulkPut(profiles)
       await db.passages.bulkPut(backup.passages)
       await db.questions.bulkPut(backup.questions)

@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, ClipboardList, GraduationCap, Heart, Rocket, Users } from 'lucide-react'
+import { BarChart3, BookOpen, ClipboardList, GraduationCap, Heart, Rocket, ShieldCheck, Users } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { ScreenHeader, btnPrimaryClass, btnSecondaryClass, cardClass } from '../components/ui'
 import type { ScreenId } from '../types'
@@ -201,9 +201,30 @@ export function GuidePage({ onNavigate }: GuidePageProps) {
               and analytics.
             </p>
             <p>
-              The cloud badge next to the avatar syncs progress automatically to a private GitHub Gist
-              (settings inside the badge). You can also download or upload a JSON backup file from the
-              same menu for offline copies.
+              The cloud badge next to the avatar shows the sync status. Everything else — the GitHub
+              Gist settings, JSON backup files, automatic snapshots, the parent PIN and the data resets —
+              lives in <strong>Settings</strong>, which is protected by a PIN.
+            </p>
+          </SectionCard>
+
+          <SectionCard
+            icon={ShieldCheck}
+            title="Safety and snapshots"
+            accentClass="bg-emerald-100 text-emerald-700"
+          >
+            <p>
+              Every question and passage is screened by the <strong>Child Safety Seal</strong> before it
+              can reach the practice screens, so nothing adult, violent or harmful is ever shown. The
+              seal lives in Settings, where a parent can re-run the check on the device at any time.
+            </p>
+            <p>
+              ElevenSpark also takes an <strong>automatic snapshot</strong> of the progress once a day
+              and keeps the last 20 days. Today&apos;s snapshot is overwritten automatically, and any
+              earlier day can be restored from Settings if something is deleted by accident.
+            </p>
+            <p>
+              Settings locks itself after 5 minutes of inactivity, so the PIN is only needed while a
+              parent is actually using the app.
             </p>
           </SectionCard>
 

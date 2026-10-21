@@ -1,12 +1,10 @@
 import {
   AlertTriangle,
-  Download,
   Flame,
   RotateCcw,
   Target,
   Timer,
   Trophy,
-  Upload,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { QuizRunner, type QuizResult } from '../components/QuizRunner'
@@ -24,14 +22,6 @@ import {
 import { db } from '../db/database'
 import { useProfile } from '../context/ProfileContext'
 import type { Attempt, Passage, Question, Session } from '../db/schemas'
-import {
-  backupFilename,
-  buildBackup,
-  parseBackup,
-  restoreBackup,
-  serializeBackup,
-  triggerDownload,
-} from '../lib/backup'
 import { formatClock, formatDateTime } from '../lib/format'
 import {
   computeStreak,
@@ -75,8 +65,6 @@ export function Progress({ onNavigate }: ProgressProps) {
   const [mistakes, setMistakes] = useState<MistakeEntry[]>([])
   const [clinic, setClinic] = useState<ClinicRun | null>(null)
   const [clinicResult, setClinicResult] = useState<QuizResult | null>(null)
-  const [banner, setBanner] = useState<string | null>(null)
-  const [pendingBackupText, setPendingBackupText] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const [attemptRows, sessionRows, mistakeRows] = await Promise.all([
@@ -113,44 +101,6 @@ export function Progress({ onNavigate }: ProgressProps) {
     },
     [activeProfileId],
   )
-
-  const handleExport = useCallback(async () => {
-    try {
-      const backup = await buildBackup()
-      triggerDownload(backupFilename(), serializeBackup(backup))
-      setBanner('Backup downloaded. Keep the file safe — you can restore it any time.')
-    } catch {
-      setBanner('Could not build the backup file. Please try again.')
-    }
-  }, [])
-
-  const handleFileSelected = useCallback(async (file: File | undefined) => {
-    if (!file) return
-    try {
-      const text = await file.text()
-      const parsed = parseBackup(text)
-      setPendingBackupText(serializeBackup(parsed))
-      setBanner(
-        `Backup ready: ${parsed.questions.length} questions, ${parsed.sessions.length} sessions, ${parsed.attempts.length} answers. Confirm below to replace current data.`,
-      )
-    } catch (error) {
-      setPendingBackupText(null)
-      setBanner(error instanceof Error ? error.message : 'Could not read that file.')
-    }
-  }, [])
-
-  const confirmRestore = useCallback(async () => {
-    if (!pendingBackupText) return
-    try {
-      const parsed = parseBackup(pendingBackupText)
-      await restoreBackup(parsed)
-      setPendingBackupText(null)
-      setBanner('Backup restored. Everything on this device now matches your backup.')
-      await load()
-    } catch {
-      setBanner('Something went wrong while restoring. Your old data was not changed.')
-    }
-  }, [pendingBackupText, load])
 
   if (clinic) {
     if (clinicResult) {
@@ -214,17 +164,8 @@ export function Progress({ onNavigate }: ProgressProps) {
     <div className="flex flex-col gap-5">
       <ScreenHeader
         title="Evolution & Mistake Bank"
-        subtitle="See how you are growing, practise tricky questions, and keep your data safe."
+        subtitle="See how you are growing and practise tricky questions to master them."
       />
-
-      {banner ? (
-        <div
-          className="rounded-2xl border-2 border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-900"
-          role="status"
-        >
-          {banner}
-        </div>
-      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className={cardClass}>
@@ -383,44 +324,6 @@ export function Progress({ onNavigate }: ProgressProps) {
             ))}
           </ul>
         )}
-      </section>
-
-      <section className={cardClass}>
-        <h2 className="mb-2 text-base font-black text-slate-900">Backup & restore</h2>
-        <p className="mb-4 text-sm font-semibold text-slate-600">
-          Export everything on this device to a file, or restore a previous backup. Restoring replaces all
-          current data on this device.
-        </p>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <button type="button" onClick={() => void handleExport()} className={btnPrimaryClass}>
-            <Download className="h-5 w-5" aria-hidden="true" />
-            Export backup
-          </button>
-          <label className={`${btnSecondaryClass} cursor-pointer`}>
-            <Upload className="h-5 w-5" aria-hidden="true" />
-            Choose backup file
-            <input
-              type="file"
-              accept="application/json,.json"
-              className="sr-only"
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                event.target.value = ''
-                void handleFileSelected(file)
-              }}
-            />
-          </label>
-          {pendingBackupText ? (
-            <button
-              type="button"
-              onClick={() => void confirmRestore()}
-              className={`${btnPrimaryClass} border-2 border-rose-600 bg-rose-600 hover:bg-rose-700`}
-            >
-              <AlertTriangle className="h-5 w-5" aria-hidden="true" />
-              Confirm replace all data
-            </button>
-          ) : null}
-        </div>
       </section>
     </div>
   )

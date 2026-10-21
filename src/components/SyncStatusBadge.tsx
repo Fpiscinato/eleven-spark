@@ -1,5 +1,5 @@
 import { CloudAlert, CloudCheck, Download, Lock, RefreshCw, Upload } from 'lucide-react'
-import { useCallback, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { useParentGate } from '../context/ParentGateContext'
 import {
   exportSyncFile,
@@ -10,7 +10,55 @@ import {
   subscribeSync,
   syncNow,
 } from '../services/gistSync'
+import { Modal } from './Modal'
 import { btnPrimaryClass, btnSecondaryClass } from './ui'
+
+export const OPEN_SYNC_EVENT = 'elevenspark:open-sync'
+
+export function openSyncSettings(): void {
+  window.dispatchEvent(new CustomEvent(OPEN_SYNC_EVENT))
+}
+
+function syncVisual(status: ReturnType<typeof getSyncStatus>): 'ok' | 'syncing' | 'alert' {
+  if (!status.online) return 'alert'
+  if (status.state === 'syncing') return 'syncing'
+  return status.state === 'ok' ? 'ok' : 'alert'
+}
+
+function syncTitle(status: ReturnType<typeof getSyncStatus>): string {
+  if (!status.online) return 'Offline — sync will resume when you reconnect'
+  if (status.state === 'syncing') return 'Syncing now...'
+  if (status.state === 'ok' && status.lastSyncAt) return `Synced ${relativeTime(status.lastSyncAt)}`
+  return status.error ?? 'Cloud sync is not configured yet'
+}
+
+export function SyncStatusSummary({ onOpen }: { onOpen: () => void }) {
+  const status = useSyncStatus()
+  const visual = syncVisual(status)
+  const title = syncTitle(status)
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 px-4 text-sm font-extrabold transition ${
+        visual === 'ok'
+          ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-400'
+          : visual === 'syncing'
+            ? 'border-sky-200 bg-sky-50 text-sky-700 hover:border-sky-400'
+            : 'border-orange-200 bg-orange-50 text-orange-700 hover:border-orange-400'
+      }`}
+    >
+      {visual === 'ok' ? (
+        <CloudCheck className="h-5 w-5" aria-hidden="true" />
+      ) : visual === 'syncing' ? (
+        <RefreshCw className="h-5 w-5 animate-spin" aria-hidden="true" />
+      ) : (
+        <CloudAlert className="h-5 w-5" aria-hidden="true" />
+      )}
+      {title}
+    </button>
+  )
+}
 
 function relativeTime(timestamp: number): string {
   const minutes = Math.floor((Date.now() - timestamp) / 60000)
@@ -34,22 +82,20 @@ export function SyncStatusBadge() {
   const [note, setNote] = useState<string | null>(null)
   const [working, setWorking] = useState(false)
 
-  const offline = !status.online
-  const visual: 'ok' | 'syncing' | 'alert' = offline
-    ? 'alert'
-    : status.state === 'syncing'
-      ? 'syncing'
-      : status.state === 'ok'
-        ? 'ok'
-        : 'alert'
+  const visual = syncVisual(status)
+  const title = syncTitle(status)
 
-  const title = offline
-    ? 'Offline — sync will resume when you reconnect'
-    : status.state === 'syncing'
-      ? 'Syncing now...'
-      : status.state === 'ok' && status.lastSyncAt
-        ? `Synced ${relativeTime(status.lastSyncAt)}`
-        : status.error ?? 'Cloud sync is not configured yet'
+  const openPanel = useCallback(() => {
+    setToken(getSyncConfig().token)
+    setGistId(getSyncConfig().gistId)
+    setOpen(true)
+  }, [])
+
+  useEffect(() => {
+    const handleOpen = () => openPanel()
+    window.addEventListener(OPEN_SYNC_EVENT, handleOpen)
+    return () => window.removeEventListener(OPEN_SYNC_EVENT, handleOpen)
+  }, [openPanel])
 
   const handleSaveAndSync = useCallback(() => {
     saveSyncConfig({ token, gistId })
@@ -76,17 +122,16 @@ export function SyncStatusBadge() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
+      <div
         title={title}
+        role="status"
         aria-label={`Cloud sync: ${title}`}
-        className={`inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 px-3 text-sm font-extrabold transition ${
+        className={`inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 px-3 text-sm font-extrabold ${
           visual === 'ok'
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-400'
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
             : visual === 'syncing'
-              ? 'border-sky-200 bg-sky-50 text-sky-700 hover:border-sky-400'
-              : 'border-orange-200 bg-orange-50 text-orange-700 hover:border-orange-400'
+              ? 'border-sky-200 bg-sky-50 text-sky-700'
+              : 'border-orange-200 bg-orange-50 text-orange-700'
         }`}
       >
         {visual === 'ok' ? (
@@ -101,20 +146,15 @@ export function SyncStatusBadge() {
             ? `Synced ${relativeTime(status.lastSyncAt)}`
             : visual === 'syncing'
               ? 'Syncing...'
-              : offline
-                ? 'Offline'
-                : 'Sync off'}
+              : status.online
+                ? 'Sync off'
+                : 'Offline'}
         </span>
-      </button>
+      </div>
 
       {open ? (
-        <div
-          className="fixed inset-0 z-[80] grid place-items-center overflow-y-auto bg-slate-900/50 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Cloud sync settings"
-        >
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+        <Modal open onClose={() => setOpen(false)} label="Cloud sync settings">
+          <div className="w-full rounded-3xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase tracking-widest text-slate-400">Cloud sync</p>
@@ -156,7 +196,7 @@ export function SyncStatusBadge() {
               ) : null}
             </div>
 
-            {status.error && !offline ? (
+            {status.error && status.online ? (
               <p className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm font-bold leading-relaxed text-rose-700">
                 {status.error}
               </p>
@@ -263,7 +303,7 @@ export function SyncStatusBadge() {
               </div>
             ) : null}
           </div>
-        </div>
+        </Modal>
       ) : null}
     </>
   )

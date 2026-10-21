@@ -1,6 +1,7 @@
 import { ChevronRight, HelpCircle } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
-import type { NvrFigure, NvrLayout, NvrMark, NvrMarkPosition, SvgConfig } from '../../db/schemas'
+import type { NvrFigure, NvrLayout, NvrMark, SvgConfig } from '../../db/schemas'
+import { MARK_OFFSETS, describeFigure } from '../../utils/nvrFigures'
 
 const SIZE_UNITS = { small: 34, medium: 50, large: 66 } as const
 
@@ -9,18 +10,6 @@ const LAYOUT_CAPACITY: Record<NvrLayout, number> = {
   sequence: 5,
   matrix2: 4,
   matrix3: 9,
-}
-
-const MARK_OFFSETS: Record<NvrMarkPosition, [number, number]> = {
-  center: [0, 0],
-  top: [0, -0.26],
-  bottom: [0, 0.26],
-  left: [-0.26, 0],
-  right: [0.26, 0],
-  'top-left': [-0.2, -0.2],
-  'top-right': [0.2, -0.2],
-  'bottom-left': [-0.2, 0.2],
-  'bottom-right': [0.2, 0.2],
 }
 
 const STROKE = '#1f2937'
@@ -177,8 +166,10 @@ function FigureArtwork({ figure }: { figure: NvrFigure }) {
   return (
     <g>
       {defs}
-      <g transform={`rotate(${rotation} 50 50)`}>{body}</g>
-      <MarkLayer marks={figure.marks ?? []} units={units} />
+      <g transform={`rotate(${rotation} 50 50)`}>
+        {body}
+        <MarkLayer marks={figure.marks ?? []} units={units} />
+      </g>
     </g>
   )
 }
@@ -197,7 +188,7 @@ export function NvrFigureSvg({
       viewBox="0 0 100 100"
       className={className}
       role="img"
-      aria-label={title ?? `${figure.shape} figure`}
+      aria-label={title ?? describeFigure(figure)}
     >
       <FigureArtwork figure={figure} />
     </svg>

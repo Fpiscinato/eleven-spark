@@ -1,13 +1,14 @@
 import { db } from '../db/database'
-import type { Profile } from '../db/schemas'
+import type { Profile, Session, SessionMode } from '../db/schemas'
+import { PROFILES_CHANGED_EVENT } from './events'
 import { mistakesClearedKey, resetQuickPractice } from './sessionHelpers'
 
+export { PROFILES_CHANGED_EVENT } from './events'
 export const PARENT_PIN_STORAGE_KEY = 'elevenspark.parent_pin'
 export const DEFAULT_PARENT_PIN = '1126'
 export const SYNC_SNAPSHOT_KEY = 'elevenspark.sync_snapshot'
 export const BANK_VERSION_KEY = 'elevenspark.bank_version'
 export const ACTIVE_PROFILE_KEY = 'elevenspark.active_profile_id'
-export const PROFILES_CHANGED_EVENT = 'elevenspark:profiles-changed'
 
 export const TARGET_SCHOOLS = [
   "Pate's Grammar School",
@@ -30,6 +31,16 @@ export function changePin(oldPin: string, newPin: string): boolean {
   if (!isValidPinFormat(newPin)) return false
   localStorage.setItem(PARENT_PIN_STORAGE_KEY, newPin)
   return true
+}
+
+export function setParentPin(newPin: string): boolean {
+  if (!isValidPinFormat(newPin)) return false
+  localStorage.setItem(PARENT_PIN_STORAGE_KEY, newPin)
+  return true
+}
+
+export function isUsingDefaultPin(): boolean {
+  return getParentPin() === DEFAULT_PARENT_PIN
 }
 
 export interface ProfileInput {
@@ -112,15 +123,34 @@ export async function deleteProfile(profileId: string): Promise<'ok' | 'last' | 
 export interface ResetResult {
   sessionsRemoved: number
   attemptsRemoved: number
+  sessionsKept: number
+}
+
+const MOCK_MODES: readonly SessionMode[] = ['mock_paper_1', 'mock_paper_2', 'mini_mock']
+
+/**
+ * A finished mock paper is the child's official exam record, so it can never
+ * be wiped by a reset. Only unfinished or abandoned mocks may be removed.
+ */
+export function isCompletedMock(session: Session): boolean {
+  return session.status === 'completed' && MOCK_MODES.includes(session.mode)
 }
 
 export async function resetAllProgress(profileId: string): Promise<ResetResult> {
   const sessions = await db.sessions.where('profileId').equals(profileId).toArray()
+  const kept = sessions.filter(isCompletedMock)
+  const removable = sessions.filter((session) => !isCompletedMock(session))
+  const keptIds = new Set(kept.map((session) => session.id))
   const attempts = await db.attempts.where('profileId').equals(profileId).toArray()
-  await db.attempts.bulkDelete(attempts.map((attempt) => attempt.id))
-  await db.sessions.bulkDelete(sessions.map((session) => session.id))
+  const removableAttempts = attempts.filter((attempt) => !keptIds.has(attempt.sessionId))
+  await db.attempts.bulkDelete(removableAttempts.map((attempt) => attempt.id))
+  await db.sessions.bulkDelete(removable.map((session) => session.id))
   localStorage.removeItem(mistakesClearedKey(profileId))
-  return { sessionsRemoved: sessions.length, attemptsRemoved: attempts.length }
+  return {
+    sessionsRemoved: removable.length,
+    attemptsRemoved: removableAttempts.length,
+    sessionsKept: kept.length,
+  }
 }
 
 export { resetQuickPractice }
@@ -135,13 +165,21 @@ export async function resetMocks(profileId: string): Promise<ResetResult> {
     .equals(profileId)
     .and((session) => session.mode === 'mock_paper_1' || session.mode === 'mock_paper_2' || session.mode === 'mini_mock')
     .toArray()
-  const sessionIds = new Set(sessions.map((session) => session.id))
+  const kept = sessions.filter(isCompletedMock)
+  const removable = sessions.filter((session) => !isCompletedMock(session))
+  const keptIds = new Set(kept.map((session) => session.id))
+  const mockSessionIds = new Set(sessions.map((session) => session.id))
   const attempts = await db.attempts
     .where('profileId')
     .equals(profileId)
-    .and((attempt) => sessionIds.has(attempt.sessionId))
+    .and((attempt) => mockSessionIds.has(attempt.sessionId))
     .toArray()
-  await db.attempts.bulkDelete(attempts.map((attempt) => attempt.id))
-  await db.sessions.bulkDelete(sessions.map((session) => session.id))
-  return { sessionsRemoved: sessions.length, attemptsRemoved: attempts.length }
+  const removableAttempts = attempts.filter((attempt) => !keptIds.has(attempt.sessionId))
+  await db.attempts.bulkDelete(removableAttempts.map((attempt) => attempt.id))
+  await db.sessions.bulkDelete(removable.map((session) => session.id))
+  return {
+    sessionsRemoved: removable.length,
+    attemptsRemoved: removableAttempts.length,
+    sessionsKept: kept.length,
+  }
 }

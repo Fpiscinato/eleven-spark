@@ -1,4 +1,5 @@
 import type { NvrFigure, NvrFill, NvrShape, Question, SvgConfig } from '../db/schemas'
+import { visualFigureKey } from '../utils/nvrFigures'
 import { buildQuestion, difficultyAt, makeQuestionId, type QuestionDraft } from './common'
 import { createRng, hashSeed, type Rng } from './rng'
 
@@ -18,9 +19,42 @@ function nextIn<T>(list: readonly T[], value: T, steps = 1): T {
 }
 
 function figureKey(fig: NvrFigure): string {
-  return `${fig.shape}|${fig.fill ?? 'empty'}|${fig.rotation ?? 0}|${fig.size ?? 'medium'}|${(fig.marks ?? [])
-    .map((mark) => `${mark.kind}:${mark.position}:${mark.symbol ?? ''}`)
-    .join(',')}`
+  return visualFigureKey(fig)
+}
+
+function differsOnlyBySize(correct: NvrFigure, candidate: NvrFigure): boolean {
+  return (
+    candidate.shape === correct.shape &&
+    (candidate.fill ?? 'empty') === (correct.fill ?? 'empty') &&
+    (candidate.rotation ?? 0) === (correct.rotation ?? 0) &&
+    (candidate.marks ?? []).length === (correct.marks ?? []).length
+  )
+}
+
+/**
+ * Every option must look different on the page. A square turned by 90 degrees
+ * still looks like the same square, so the distractors are compared by what
+ * the child actually sees, not by the raw numbers.
+ */
+function fallbackFigures(correct: NvrFigure): NvrFigure[] {
+  const out: NvrFigure[] = []
+  const baseFill = correct.fill ?? 'empty'
+  for (const shape of ALL_SHAPES) {
+    if (shape === correct.shape) continue
+    for (const fill of FILLS) {
+      if (fill === baseFill) continue
+      out.push({ ...correct, shape, fill })
+    }
+    out.push({ ...correct, shape })
+  }
+  for (const fill of FILLS) {
+    if (fill === baseFill) continue
+    out.push({ ...correct, fill })
+  }
+  for (const rotation of [45, 90, 135, 180, 225, 270, 315]) {
+    out.push({ ...correct, rotation })
+  }
+  return out
 }
 
 function distinctDistractors(correct: NvrFigure, pool: NvrFigure[]): NvrFigure[] {
@@ -29,23 +63,20 @@ function distinctDistractors(correct: NvrFigure, pool: NvrFigure[]): NvrFigure[]
   for (const candidate of pool) {
     const key = figureKey(candidate)
     if (seen.has(key)) continue
+    if (differsOnlyBySize(correct, candidate)) continue
     seen.add(key)
     picked.push(candidate)
     if (picked.length === 4) break
   }
-  let bump = 1
-  while (picked.length < 4) {
-    const fallback = {
-      ...correct,
-      size: bump === 1 ? 'small' : bump === 2 ? 'large' : 'medium',
-      rotation: ((correct.rotation ?? 0) + bump * 45) % 360,
-    } as NvrFigure
-    const key = figureKey(fallback)
-    if (!seen.has(key)) {
+  if (picked.length < 4) {
+    for (const candidate of fallbackFigures(correct)) {
+      if (picked.length >= 4) break
+      const key = figureKey(candidate)
+      if (seen.has(key)) continue
+      if (differsOnlyBySize(correct, candidate)) continue
       seen.add(key)
-      picked.push(fallback)
+      picked.push(candidate)
     }
-    bump += 1
   }
   return picked
 }
@@ -192,7 +223,8 @@ function matrixQuestion(rng: Rng, index: number, nonce: string): Question {
     { ...answer, fill: nextIn(FILLS, answer.fill ?? 'empty', 2) },
     { ...answer, shape: nextIn(ALL_SHAPES, answer.shape) },
     { ...answer, shape: nextIn(POLYGON_SHAPES, answer.shape) },
-    { ...answer, size: (answer.size ?? 'medium') === 'large' ? 'small' : 'large' },
+    { ...answer, shape: nextIn(ALL_SHAPES, answer.shape), fill: nextIn(FILLS, answer.fill ?? 'empty') },
+    { ...answer, rotation: ((answer.rotation ?? 0) + 90) % 360 },
     figure(nextIn(ALL_SHAPES, answer.shape), nextIn(FILLS, answer.fill ?? 'empty')),
   ]
   const distractors = distinctDistractors(answer, rng.shuffle(pool))
@@ -256,7 +288,7 @@ function sequenceQuestion(rng: Rng, index: number, nonce: string): Question {
     { ...answer, fill: nextIn(FILLS, answer.fill ?? 'empty') },
     { ...answer, rotation: ((answer.rotation ?? 0) + 90) % 360 },
     { ...answer, shape: nextIn(ALL_SHAPES, answer.shape) },
-    { ...answer, size: (answer.size ?? 'medium') === 'large' ? 'small' : 'large' },
+    { ...answer, shape: nextIn(POLYGON_SHAPES, answer.shape) },
     figure(nextIn(ALL_SHAPES, answer.shape), nextIn(FILLS, answer.fill ?? 'empty')),
   ]
   const distractors = distinctDistractors(answer, rng.shuffle(pool))
@@ -354,9 +386,9 @@ function reflectionRotationQuestion(rng: Rng, index: number, nonce: string): Que
     explanation = 'The arrow rotates a quarter-turn (90 degrees) clockwise each step. After four quarter-turns it points the same way as the first arrow.'
   } else if (kind === 1) {
     const start = rng.int(0, 3) * 90
-    cells = [0, 1, 2, 3].map((step) => figure('cross', 'shaded', { rotation: (start + step * 135) % 360 }))
-    answer = figure('cross', 'shaded', { rotation: (start + 4 * 135) % 360 })
-    explanation = 'Each cross turns 135 degrees further round. The next cross turns one more 135 degrees from the last one.'
+    cells = [0, 1, 2, 3].map((step) => figure('arrow', 'shaded', { rotation: (start + step * 135) % 360 }))
+    answer = figure('arrow', 'shaded', { rotation: (start + 4 * 135) % 360 })
+    explanation = 'Each arrow turns 135 degrees further round. The next arrow turns one more 135 degrees from the last one.'
   } else if (kind === 2) {
     const shape = rng.pick(['square', 'circle'] as const)
     const fill = rng.pick(FILLS)

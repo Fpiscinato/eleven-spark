@@ -1,6 +1,9 @@
-import { BarChart3, BookOpen, ClipboardList, Home, Lock, Settings, Sparkles, TrendingUp, Unlock, Zap } from 'lucide-react'
+import { BarChart3, BookOpen, ClipboardList, Home, Lock, Settings, TrendingUp, Unlock, X, Zap } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useParentGate } from '../context/ParentGateContext'
+import { useParentAutoLock, useParentGate } from '../context/ParentGateContext'
+import { VERSION_SEAL } from '../config/version'
+import { ElevenSparkLogo } from './brand/ElevenSparkLogo'
+import { MotivationalCard } from './MotivationalCard'
 import { ProfileSwitcher } from './ProfileSwitcher'
 import { SyncStatusBadge } from './SyncStatusBadge'
 import type { ScreenId } from '../types'
@@ -14,6 +17,12 @@ const NAV_ITEMS = [
   { screen: 'guide' as const, label: 'Guide', icon: BookOpen },
 ]
 
+function formatCountdown(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
 interface AppShellProps {
   screen: ScreenId
   onNavigate: (screen: ScreenId) => void
@@ -22,6 +31,7 @@ interface AppShellProps {
 
 export function AppShell({ screen, onNavigate, children }: AppShellProps) {
   const { parentMode, requestUnlock, lockParentMode } = useParentGate()
+  const { secondsLeft, notice, clearNotice } = useParentAutoLock()
 
   const handleParentToggle = () => {
     if (parentMode) {
@@ -39,9 +49,7 @@ export function AppShell({ screen, onNavigate, children }: AppShellProps) {
           onClick={() => onNavigate('dashboard')}
           className="flex items-center gap-3 border-b border-slate-100 px-6 py-5 text-left transition hover:bg-slate-50"
         >
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-indigo-600 text-white">
-            <Sparkles className="h-6 w-6" aria-hidden="true" />
-          </div>
+          <ElevenSparkLogo className="h-11 w-auto" />
           <div>
             <p className="text-lg font-black leading-tight text-slate-900">ElevenSpark</p>
             <p className="text-xs font-bold text-slate-500">Gloucestershire 11+</p>
@@ -69,7 +77,7 @@ export function AppShell({ screen, onNavigate, children }: AppShellProps) {
             )
           })}
         </nav>
-        <div className="mt-auto flex flex-col gap-2 p-4">
+        <div className="mt-auto flex flex-col gap-3 p-4">
           <button
             type="button"
             onClick={handleParentToggle}
@@ -83,6 +91,11 @@ export function AppShell({ screen, onNavigate, children }: AppShellProps) {
             {parentMode ? <Unlock className="h-5 w-5" aria-hidden="true" /> : <Lock className="h-5 w-5" aria-hidden="true" />}
             {parentMode ? 'Parent Mode Active' : 'Parent Mode'}
           </button>
+          {parentMode && secondsLeft !== null ? (
+            <p className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-extrabold text-amber-900">
+              Auto-locks in {formatCountdown(secondsLeft)}
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={() => onNavigate('settings')}
@@ -94,24 +107,25 @@ export function AppShell({ screen, onNavigate, children }: AppShellProps) {
             }`}
           >
             <Settings className="h-5 w-5" aria-hidden="true" />
-            Parent Dashboard
+            Settings
           </button>
+          <MotivationalCard />
         </div>
-        <p className="px-6 pb-5 text-xs font-bold text-slate-400">
-          Practice a little every day — small steps win big.
-        </p>
+        <p className="px-6 pb-5 text-xs font-bold text-slate-400">{VERSION_SEAL}</p>
       </aside>
 
       <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-3 py-2.5 backdrop-blur md:pl-[276px] md:pr-8 md:py-3">
-        <div className="flex min-w-0 items-center gap-2 md:hidden">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white">
-            <Sparkles className="h-5 w-5" aria-hidden="true" />
-          </div>
+        <div className="flex min-w-0 items-center gap-2">
+          <ElevenSparkLogo className="h-9 w-auto shrink-0" />
           <p className="truncate text-base font-black text-slate-900">ElevenSpark</p>
         </div>
-        <div className="hidden min-w-0 md:block" />
         <div className="flex shrink-0 items-center gap-2">
           <SyncStatusBadge />
+          {parentMode && secondsLeft !== null ? (
+            <span className="hidden rounded-xl border-2 border-amber-200 bg-amber-50 px-2 py-1 text-xs font-extrabold text-amber-800 sm:inline">
+              {formatCountdown(secondsLeft)}
+            </span>
+          ) : null}
           <button
             type="button"
             onClick={handleParentToggle}
@@ -128,7 +142,7 @@ export function AppShell({ screen, onNavigate, children }: AppShellProps) {
           <button
             type="button"
             onClick={() => onNavigate('settings')}
-            aria-label="Parent Dashboard settings"
+            aria-label="Settings"
             aria-current={screen === 'settings' ? 'page' : undefined}
             className={`grid h-11 w-11 place-items-center rounded-xl border-2 transition ${
               screen === 'settings'
@@ -143,7 +157,26 @@ export function AppShell({ screen, onNavigate, children }: AppShellProps) {
       </header>
 
       <main className="px-4 pb-28 pt-5 md:pb-10 md:pl-[272px] md:pr-8 md:pt-6">
-        <div className="mx-auto max-w-5xl">{children}</div>
+        <div className="mx-auto max-w-5xl">
+          {notice ? (
+            <p
+              className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900"
+              role="status"
+            >
+              <span>{notice}</span>
+              <button
+                type="button"
+                onClick={clearNotice}
+                aria-label="Dismiss message"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-amber-700 transition hover:bg-amber-100"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </p>
+          ) : null}
+          {screen === 'mock' ? null : <MotivationalCard variant="compact" className="mb-4 md:hidden" />}
+          {children}
+        </div>
       </main>
 
       <nav

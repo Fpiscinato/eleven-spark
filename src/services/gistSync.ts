@@ -2,25 +2,15 @@ import { z } from 'zod'
 import { db } from '../db/database'
 import { attemptSchema, profileSchema, sessionSchema, type Attempt, type Profile, type Session } from '../db/schemas'
 import { triggerDownload } from '../lib/backup'
+import { PROFILES_CHANGED_EVENT } from '../lib/admin'
+import { saveSnapshot } from './localSnapshots'
 
 export const GIST_FILENAME = 'elevenspark-progress-sync.json'
 const GIST_DESCRIPTION = 'ElevenSpark progress sync'
 const TOKEN_KEY = 'elevenspark.github_token'
 const GIST_KEY = 'elevenspark.gist_id'
 const LAST_SYNC_KEY = 'elevenspark.last_sync_at'
-const SNAPSHOT_KEY = 'elevenspark.sync_snapshot'
 const API_BASE = 'https://api.github.com/gists'
-
-function writeSnapshot(payload: SyncPayload): void {
-  try {
-    window.localStorage.setItem(
-      SNAPSHOT_KEY,
-      JSON.stringify({ profiles: payload.profiles, sessions: payload.sessions, attempts: payload.attempts }),
-    )
-  } catch {
-    return
-  }
-}
 
 export type SyncState = 'not-configured' | 'syncing' | 'ok' | 'error'
 
@@ -278,14 +268,14 @@ export async function syncNow(): Promise<void> {
         setStatus({ state: 'error', busy: false, error: 'Gist created, but this browser blocked saving the Gist ID.' })
         return
       }
-      writeSnapshot(local)
+      void saveSnapshot('sync')
       markSynced()
       return
     }
     const remote = await fetchRemotePayload(token, gistId)
     const merged = mergePayloads(local, remote)
     await updateGist(token, gistId, merged)
-    writeSnapshot(merged)
+    void saveSnapshot('sync')
     markSynced()
   } catch (error) {
     setStatus({
@@ -348,12 +338,17 @@ export function startSyncListeners(): () => void {
   const handleOffline = () => {
     setStatus({ online: false })
   }
+  const handleProfilesChanged = () => {
+    scheduleSync(1500)
+  }
   window.addEventListener('online', handleOnline)
   window.addEventListener('offline', handleOffline)
+  window.addEventListener(PROFILES_CHANGED_EVENT, handleProfilesChanged)
   if (isConfigured()) scheduleSync(1500)
   return () => {
     window.removeEventListener('online', handleOnline)
     window.removeEventListener('offline', handleOffline)
+    window.removeEventListener(PROFILES_CHANGED_EVENT, handleProfilesChanged)
     if (debounceTimer !== null) {
       window.clearTimeout(debounceTimer)
       debounceTimer = null

@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie'
 import type { Attempt, Passage, Profile, Question, Session } from './schemas'
-import { DEFAULT_PROFILE_ID, GUEST_PROFILE_ID } from './schemas'
+import { DEFAULT_PROFILE_ID } from './schemas'
 
 export class ElevenSparkDB extends Dexie {
   profiles!: Table<Profile, string>
@@ -57,41 +57,20 @@ export class ElevenSparkDB extends Dexie {
             }
           })
       })
+    this.version(4).stores({
+      profiles: 'id, createdAt, updatedAt',
+      questions: 'id, subject, topic, difficulty, passageId',
+      passages: 'id, title',
+      sessions: 'id, profileId, status, mode, startedAt',
+      attempts: 'id, profileId, sessionId, questionId, subject, timestamp',
+    })
   }
 }
 
 export const db = new ElevenSparkDB()
 
-export function defaultProfiles(): Profile[] {
-  const now = Date.now()
-  return [
-    {
-      id: DEFAULT_PROFILE_ID,
-      name: 'Student',
-      avatar: '🌟',
-      targetSchool: "Pate's Grammar School",
-      isGuest: false,
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: GUEST_PROFILE_ID,
-      name: 'Guest / Parent Test',
-      avatar: '🧪',
-      targetSchool: '',
-      isGuest: true,
-      createdAt: now,
-      updatedAt: now,
-    },
-  ]
-}
-
 export async function initializeDatabase(): Promise<void> {
   await db.open()
   const { syncQuestionBank } = await import('./seed')
   await syncQuestionBank()
-  const profileCount = await db.profiles.count()
-  if (profileCount === 0) {
-    await db.profiles.bulkAdd(defaultProfiles())
-  }
 }

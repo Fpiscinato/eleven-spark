@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useProfile } from '../context/ProfileContext'
 import { useParentGate } from '../context/ParentGateContext'
 import { TARGET_SCHOOLS } from '../lib/admin'
+import { Modal } from './Modal'
 import { btnPrimaryClass, btnSecondaryClass } from './ui'
 
 const AVATAR_CHOICES = ['🌟', '🚀', '🦁', '🦋', '🐉', '🎨', '🚴', '🔬']
@@ -83,7 +84,7 @@ export function ProfileSwitcher() {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 top-[calc(100%+8px)] z-40 w-72 rounded-3xl border border-slate-200 bg-white p-3 shadow-xl"
+          className="absolute right-0 top-[calc(100%+8px)] z-50 w-72 rounded-3xl border border-slate-200 bg-white p-3 shadow-xl"
         >
           <p className="px-2 pb-2 text-xs font-black uppercase tracking-widest text-slate-400">
             Switch profile
@@ -178,13 +179,8 @@ export function ProfileSwitcher() {
       ) : null}
 
       {editing ? (
-        <div
-          className="fixed inset-0 z-[90] grid place-items-center overflow-y-auto bg-slate-900/50 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label={editing.mode === 'edit' ? 'Edit profile' : 'New profile'}
-        >
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+        <Modal open onClose={() => setEditing(null)} label={editing.mode === 'edit' ? 'Edit profile' : 'New profile'}>
+          <div className="w-full rounded-3xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center gap-3">
               <div className="grid h-11 w-11 place-items-center rounded-2xl bg-indigo-100 text-xl leading-none">
                 {editing.avatar}
@@ -267,7 +263,7 @@ export function ProfileSwitcher() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       ) : null}
     </div>
   )
