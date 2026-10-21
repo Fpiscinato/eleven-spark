@@ -125,6 +125,16 @@ button {
   font-family: inherit;
 }
 
+/* A soft fade at the bottom of the question area: it tells the child that
+   there is more to read below without making her scroll to find it. */
+.scroll-fade {
+  background-image: linear-gradient(to top, #f8fafc, transparent);
+}
+
+[data-theme='dark'] .scroll-fade {
+  background-image: linear-gradient(to top, #0b1120, transparent);
+}
+
 @media print {
   body * {
     visibility: hidden;
@@ -196,6 +206,47 @@ button {
 [data-theme='dark'] .bg-white\/80 { background-color: rgb(30 41 59 / 0.8); }
 [data-theme='dark'] .bg-white\/95 { background-color: rgb(30 41 59 / 0.95); }
 [data-theme='dark'] .bg-yellow-50 { background-color: rgb(120 53 15 / 0.35); }
+
+/*
+ * Strong colours that stay readable on a dark background: the 400/500/600
+ * shades are too bright for a dark page, so they are toned down here.
+ */
+[data-theme='dark'] .bg-amber-400 { background-color: #b45309; }
+[data-theme='dark'] .bg-amber-500 { background-color: #d97706; }
+[data-theme='dark'] .bg-emerald-500 { background-color: #059669; }
+[data-theme='dark'] .bg-emerald-600 { background-color: #047857; }
+[data-theme='dark'] .bg-indigo-500 { background-color: #4f46e5; }
+[data-theme='dark'] .bg-indigo-600 { background-color: #4338ca; }
+[data-theme='dark'] .bg-indigo-700 { background-color: #3730a3; }
+[data-theme='dark'] .bg-rose-400 { background-color: #e11d48; }
+[data-theme='dark'] .bg-rose-600 { background-color: #be123c; }
+[data-theme='dark'] .bg-rose-700 { background-color: #9f1239; }
+[data-theme='dark'] .bg-rose-950 { background-color: #4c1d24; }
+[data-theme='dark'] .bg-sky-500 { background-color: #0284c7; }
+[data-theme='dark'] .bg-slate-600 { background-color: #334155; }
+[data-theme='dark'] .bg-slate-700 { background-color: #334155; }
+[data-theme='dark'] .bg-slate-800 { background-color: #1e293b; }
+[data-theme='dark'] .bg-slate-900 { background-color: #334155; }
+[data-theme='dark'] .bg-teal-100 { background-color: rgb(19 78 74 / 0.3); }
+[data-theme='dark'] .bg-teal-500 { background-color: #0d9488; }
+[data-theme='dark'] .bg-teal-600 { background-color: #0f766e; }
+[data-theme='dark'] .bg-violet-500 { background-color: #7c3aed; }
+[data-theme='dark'] .border-indigo-600 { border-color: #6366f1; }
+[data-theme='dark'] .border-rose-600 { border-color: #fb7185; }
+[data-theme='dark'] .border-teal-500 { border-color: #2dd4bf; }
+[data-theme='dark'] .from-amber-400 { --tw-gradient-from: #b45309; }
+[data-theme='dark'] .from-amber-500 { --tw-gradient-from: #b45309; }
+[data-theme='dark'] .from-amber-600 { --tw-gradient-from: #92400e; }
+[data-theme='dark'] .from-indigo-600 { --tw-gradient-from: #4338ca; }
+[data-theme='dark'] .ring-amber-300 { --tw-ring-color: rgb(251 191 36 / 0.45); }
+[data-theme='dark'] .ring-amber-400 { --tw-ring-color: rgb(251 191 36 / 0.35); }
+[data-theme='dark'] .text-slate-200 { color: #e2e8f0; }
+[data-theme='dark'] .to-amber-500 { --tw-gradient-to: #b45309; }
+[data-theme='dark'] .to-indigo-900 { --tw-gradient-to: #312e81; }
+[data-theme='dark'] .to-yellow-500 { --tw-gradient-to: #b45309; }
+[data-theme='dark'] .to-yellow-600 { --tw-gradient-to: #92400e; }
+[data-theme='dark'] .via-indigo-700 { --tw-gradient-via: #3730a3; }
+[data-theme='dark'] .via-yellow-400 { --tw-gradient-via: #a16207; }
 
 [data-theme='dark'] .from-amber-100 { --tw-gradient-from: rgb(120 53 15 / 0.32); }
 [data-theme='dark'] .from-amber-50 { --tw-gradient-from: rgb(120 53 15 / 0.35); }

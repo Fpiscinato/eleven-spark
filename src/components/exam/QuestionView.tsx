@@ -388,8 +388,8 @@ export function QuestionView({
   }, [passage])
 
   return (
-    <div className={compact ? 'flex flex-col gap-3' : 'flex flex-col gap-4'}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className={compact ? 'flex flex-col gap-2' : 'flex flex-col gap-4'}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {questionNumber !== undefined && totalQuestions !== undefined && !compact ? (
             <span className="rounded-full bg-indigo-600 px-4 py-1.5 text-sm font-extrabold text-white">
@@ -398,14 +398,14 @@ export function QuestionView({
           ) : null}
           <span
             className={`rounded-full border border-slate-200 bg-white font-bold text-slate-600 ${
-              compact ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm'
+              compact ? 'px-2.5 py-0.5 text-xs' : 'px-3 py-1.5 text-sm'
             }`}
           >
             {question.topic}
           </span>
           <span
             className={`rounded-full border border-slate-200 bg-white font-bold text-slate-500 ${
-              compact ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm'
+              compact ? 'px-2.5 py-0.5 text-xs' : 'px-3 py-1.5 text-sm'
             }`}
           >
             {'★'.repeat(question.difficulty)}

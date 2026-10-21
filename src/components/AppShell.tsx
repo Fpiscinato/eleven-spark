@@ -105,7 +105,7 @@ export function AppShell({ screen, onNavigate, children }: AppShellProps) {
         <p className="px-6 pb-5 text-xs font-bold text-slate-400">{VERSION_SEAL}</p>
       </aside>
 
-      <header className="app-print-header sticky top-0 z-40 flex h-[64px] items-center gap-2 border-b border-slate-200 bg-white/95 px-2 backdrop-blur md:h-[69px] md:gap-3 md:px-6">
+      <header className="app-print-header sticky top-0 z-40 flex h-[64px] items-center gap-2 border-b border-slate-200 bg-white px-2 md:h-[69px] md:gap-3 md:px-6">
         <button
           type="button"
           onClick={() => onNavigate('dashboard')}

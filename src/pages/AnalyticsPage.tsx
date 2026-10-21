@@ -384,19 +384,11 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
                 )
               })}
             </div>
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+            <div className="mt-5 flex flex-wrap items-center gap-2 rounded-2xl bg-slate-50 px-4 py-3">
               <p className="flex items-center gap-2 text-sm font-bold text-slate-600">
                 <Flame className="h-4 w-4 text-orange-500" aria-hidden="true" />
-                Pick a topic and practise it right away.
+                Pick a topic above to practise it right away.
               </p>
-              <button
-                type="button"
-                onClick={() => onNavigate('practice')}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-extrabold text-white transition hover:bg-indigo-700 active:scale-[0.98]"
-              >
-                <Rocket className="h-4 w-4" aria-hidden="true" />
-                Practice
-              </button>
             </div>
           </section>
         )}
@@ -611,19 +603,11 @@ export function AnalyticsPage({ onNavigate }: AnalyticsPageProps) {
           </>
         )}
 
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+        <div className="mt-5 flex flex-wrap items-center gap-2 rounded-2xl bg-slate-50 px-4 py-3">
           <p className="flex items-center gap-2 text-sm font-bold text-slate-600">
             <Flame className="h-4 w-4 text-orange-500" aria-hidden="true" />
             Weakest topics first — practise a red or orange chip for the biggest gains.
           </p>
-          <button
-            type="button"
-            onClick={() => onNavigate('practice')}
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2 text-sm font-extrabold text-white transition hover:bg-indigo-700 active:scale-[0.98]"
-          >
-            <Rocket className="h-4 w-4" aria-hidden="true" />
-            Practice
-          </button>
         </div>
       </section>
     </div>

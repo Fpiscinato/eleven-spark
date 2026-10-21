@@ -403,83 +403,90 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
         </button>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain md:pr-1">
-        <QuestionView
-          key={question.id}
-          question={question}
-          passage={passage}
-          compact
-          questionNumber={index + 1}
-          totalQuestions={run.questions.length}
-          selectedIndex={isConfirmed ? outcome.selectedIndex : pending}
-          onSelect={(optionIndex) => {
-            if (!isConfirmed) setPending(optionIndex)
-          }}
-          locked={isConfirmed}
-          showFeedback={isConfirmed}
-          writtenMode={run.writtenMode}
-          onWriteAnswer={(value) => handleWriteConfirm(value)}
-        />
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div className="flex flex-col gap-3 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:pr-1">
+          <QuestionView
+            key={question.id}
+            question={question}
+            passage={passage}
+            compact
+            questionNumber={index + 1}
+            totalQuestions={run.questions.length}
+            selectedIndex={isConfirmed ? outcome.selectedIndex : pending}
+            onSelect={(optionIndex) => {
+              if (!isConfirmed) setPending(optionIndex)
+            }}
+            locked={isConfirmed}
+            showFeedback={isConfirmed}
+            writtenMode={run.writtenMode}
+            onWriteAnswer={(value) => handleWriteConfirm(value)}
+          />
 
-        {isConfirmed && paceMessage ? (
-          <div
-            className={`rounded-2xl border-2 px-4 py-3 text-base font-extrabold ${
-              paceMessage.correct
-                ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-                : 'border-rose-300 bg-rose-50 text-rose-800'
-            }`}
-            role="status"
-          >
-            <span className="flex items-center gap-2">
-              {paceMessage.correct ? (
-                <Check className="h-5 w-5 shrink-0" aria-hidden="true" />
-              ) : (
-                <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden="true" />
-              )}
-              <MathText text={paceMessage.text} />
-            </span>
-          </div>
-        ) : null}
-
-        {isConfirmed ? (
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setHelpView((view) => (view === 'quick' ? 'none' : 'quick'))}
-                aria-pressed={helpView === 'quick'}
-                className={`inline-flex min-h-[48px] items-center gap-2 rounded-2xl border-2 px-4 py-2 text-sm font-extrabold transition ${
-                  helpView === 'quick'
-                    ? 'border-amber-500 bg-amber-500 text-white'
-                    : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
-                }`}
-              >
-                <Lightbulb className="h-5 w-5" aria-hidden="true" />
-                💡 Quick Explanation
-              </button>
-              <button
-                type="button"
-                onClick={() => setHelpView((view) => (view === 'tutorial' ? 'none' : 'tutorial'))}
-                aria-pressed={helpView === 'tutorial'}
-                className={`inline-flex min-h-[48px] items-center gap-2 rounded-2xl border-2 px-4 py-2 text-sm font-extrabold transition ${
-                  helpView === 'tutorial'
-                    ? 'border-indigo-600 bg-indigo-600 text-white'
-                    : 'border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
-                }`}
-              >
-                <Brain className="h-5 w-5" aria-hidden="true" />
-                🧠 Learn How to Solve (Tutorial)
-              </button>
+          {isConfirmed && paceMessage ? (
+            <div
+              className={`rounded-2xl border-2 px-4 py-3 text-base font-extrabold ${
+                paceMessage.correct
+                  ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                  : 'border-rose-300 bg-rose-50 text-rose-800'
+              }`}
+              role="status"
+            >
+              <span className="flex items-center gap-2">
+                {paceMessage.correct ? (
+                  <Check className="h-5 w-5 shrink-0" aria-hidden="true" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden="true" />
+                )}
+                <MathText text={paceMessage.text} />
+              </span>
             </div>
-            {helpView === 'quick' ? (
-              <QuickExplanation question={question} writtenMode={isWrittenQuestion} />
-            ) : null}
-            {helpView === 'tutorial' ? <LearnHowToSolve question={question} /> : null}
-          </div>
-        ) : null}
+          ) : null}
+
+          {isConfirmed ? (
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setHelpView((view) => (view === 'quick' ? 'none' : 'quick'))}
+                  aria-pressed={helpView === 'quick'}
+                  className={`inline-flex min-h-[48px] items-center gap-2 rounded-2xl border-2 px-4 py-2 text-sm font-extrabold transition ${
+                    helpView === 'quick'
+                      ? 'border-amber-500 bg-amber-500 text-slate-950'
+                      : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
+                  }`}
+                >
+                  <Lightbulb className="h-5 w-5" aria-hidden="true" />
+                  💡 Quick Explanation
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHelpView((view) => (view === 'tutorial' ? 'none' : 'tutorial'))}
+                  aria-pressed={helpView === 'tutorial'}
+                  className={`inline-flex min-h-[48px] items-center gap-2 rounded-2xl border-2 px-4 py-2 text-sm font-extrabold transition ${
+                    helpView === 'tutorial'
+                      ? 'border-indigo-600 bg-indigo-600 text-white'
+                      : 'border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
+                  }`}
+                >
+                  <Brain className="h-5 w-5" aria-hidden="true" />
+                  🧠 Learn How to Solve (Tutorial)
+                </button>
+              </div>
+              {helpView === 'quick' ? (
+                <QuickExplanation question={question} writtenMode={isWrittenQuestion} />
+              ) : null}
+              {helpView === 'tutorial' ? <LearnHowToSolve question={question} /> : null}
+            </div>
+          ) : null}
+        </div>
+        {/* A soft fade tells the child that there is more to read below. */}
+        <div
+          className="scroll-fade pointer-events-none absolute inset-x-0 bottom-0 h-10"
+          aria-hidden="true"
+        />
       </div>
 
-      <footer className="sticky bottom-16 z-20 -mx-4 shrink-0 border-t-2 border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:static md:mx-0 md:rounded-2xl md:border-2 md:border-slate-200 md:shadow-sm">
+      <footer className="sticky bottom-[calc(64px+env(safe-area-inset-bottom))] z-20 -mx-4 shrink-0 border-t-2 border-slate-200 bg-white px-4 py-3 md:static md:mx-0 md:rounded-2xl md:border-2 md:border-slate-200 md:shadow-sm">
         {isConfirmed ? (
           <button type="button" onClick={goNext} className={`${btnPrimaryClass} w-full`}>
             {isLast ? 'See my results' : 'Next question'}

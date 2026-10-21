@@ -117,7 +117,7 @@ function DedicationCard({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={onClose}
-            className="mt-1 inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 px-6 py-3 text-base font-black text-white shadow-sm transition hover:from-amber-600 hover:to-yellow-600 active:scale-[0.98]"
+            className="mt-1 inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 px-6 py-3 text-base font-black text-slate-950 shadow-sm transition hover:from-amber-600 hover:to-yellow-600 active:scale-[0.98]"
           >
             <Heart className="h-5 w-5" aria-hidden="true" />
             I'm ready — let's go!

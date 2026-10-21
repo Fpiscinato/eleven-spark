@@ -287,7 +287,7 @@ export function BeaconWritingPanel({ onSubmitted, resetKey }: BeaconWritingPanel
       aria-label="Beacon creative writing"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-amber-500 text-white">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-amber-500 text-slate-950">
           <BookOpen className="h-5 w-5" aria-hidden="true" />
         </span>
         <div className="min-w-0">
@@ -306,7 +306,7 @@ export function BeaconWritingPanel({ onSubmitted, resetKey }: BeaconWritingPanel
                 <span
                   className={`rounded-full px-2.5 py-1 ${
                     current
-                      ? 'bg-amber-500 text-white'
+                      ? 'bg-amber-500 text-slate-950'
                       : done
                         ? 'bg-emerald-500 text-white'
                         : 'bg-white/70 text-amber-700'
