@@ -1424,7 +1424,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
         </div>
       ) : null}
 
-      <div className={`${cardClass} flex shrink-0 flex-wrap items-center justify-between gap-3`}>
+      <div className={`${cardClass} !p-3 flex shrink-0 flex-wrap items-center justify-between gap-2 md:!p-4`}>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-lg font-black text-slate-900">{engine.config.title}</span>
           {engine.config.sections.map((section, index) => {
@@ -1448,7 +1448,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
             )
           })}
         </div>
-        <p className={`text-3xl font-black tabular-nums ${timerClass}`} aria-live="polite">
+        <p className={`text-2xl font-black tabular-nums ${timerClass}`} aria-live="polite">
           {formatClock(remaining)}
         </p>
       </div>
@@ -1457,7 +1457,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
         <div className="flex flex-col gap-3 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:pr-1">
           {!isCreativeWriting && sectionQuestionsList.length > 0 && question ? (
           <div className={`${cardClass} flex flex-wrap items-center justify-between gap-3`}>
-            <div className="flex flex-wrap gap-1.5" aria-label="Question navigator">
+            <div className="flex gap-1.5 overflow-x-auto pb-1" aria-label="Question navigator">
           {sectionQuestionsList.map((item, index) => {
             const answered = engine.answers[item.id] !== null && engine.answers[item.id] !== undefined && engine.answers[item.id] !== ''
             const flagged = engine.flags[item.id] === true
