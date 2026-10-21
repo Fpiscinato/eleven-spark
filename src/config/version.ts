@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.7.1'
+export const APP_VERSION = '1.7.2'
 export const QUESTION_BANK_VERSION = 6
 export const BUILD_TARGET = 'Gloucestershire FSCE (G7) Edition'
 export const EDITION_LABEL = 'Glos FSCE Edition'
@@ -11,9 +11,9 @@ export const LEGAL_DISCLAIMER =
  * app really updated. Keep it short and written for a 9-year-old.
  */
 export const RELEASE_NOTES: readonly string[] = [
-  'Mock exams stay on the results screen once you hand them in — no more jumping back to the last question.',
-  'The practice screen is even more compact: the question, the help buttons and Next are always on screen.',
-  'Question stars and long labels are tucked away in practice to give the question more room.',
-  'Help now scrolls into view automatically, so you never hunt for the explanation.',
-  'Every maths answer has been re-checked by the maths audit — still 100% correct.',
+  'Practice and Mock now open in a full-screen focus mode with more room for the question.',
+  'Answers show in two columns and the scratchpad moved to the top bar.',
+  'Mock now shows “1 of 30” instead of the full number grid, with Flag next to Cancel.',
+  'Blank drawings in Non-Verbal questions are fixed.',
+  'Mobile layout no longer overlaps buttons over the text.',
 ]

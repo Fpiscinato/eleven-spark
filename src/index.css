@@ -29,15 +29,15 @@ body {
 [data-theme='dark'] {
   color-scheme: dark;
   --nvr-stroke: #cbd5e1;
-  --nvr-fill: #1e293b;
-  --nvr-muted: #64748b;
+  --nvr-fill: #ffffff;
+  --nvr-muted: #94a3b8;
   --nvr-highlight: #a5b4fc;
 }
 
 :root {
   --nvr-stroke: #1f2937;
-  --nvr-fill: #ffffff;
-  --nvr-muted: #94a3b8;
+  --nvr-fill: #1e293b;
+  --nvr-muted: #64748b;
   --nvr-highlight: #4f46e5;
 }
 

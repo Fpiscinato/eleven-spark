@@ -503,7 +503,7 @@ export function QuestionView({
                 <BookOpen className="h-5 w-5 text-indigo-600" aria-hidden="true" />
                 <h3 className="text-base font-extrabold text-slate-900">{passage.title}</h3>
               </div>
-              <div className={`overflow-y-auto pr-1 ${compact ? 'max-h-[42vh] md:max-h-[38vh]' : 'max-h-[70vh] md:max-h-[64vh]'}`}>
+              <div className={`overflow-y-auto pr-1 ${compact ? 'max-h-[52vh] md:max-h-[48vh]' : 'max-h-[70vh] md:max-h-[64vh]'}`}>
                 <LineNumberedPassage
                   content={passage.content}
                   widthPx={passageWidth}

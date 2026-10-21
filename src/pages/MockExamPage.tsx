@@ -1474,53 +1474,37 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex flex-col gap-3 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:pr-1">
+        <div className="flex flex-col gap-3 pb-24 md:pb-2 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:pr-1">
           {!isCreativeWriting && sectionQuestionsList.length > 0 && question ? (
           <div className={`${cardClass} !p-2.5 flex flex-wrap items-center justify-between gap-2 md:!p-3`}>
-            <div className="flex gap-1.5 overflow-x-auto pb-1" aria-label="Question navigator">
-          {sectionQuestionsList.map((item, index) => {
-            const answered = engine.answers[item.id] !== null && engine.answers[item.id] !== undefined && engine.answers[item.id] !== ''
-            const flagged = engine.flags[item.id] === true
-            const current = index === engine.cursor
-            return (
+            <span className="text-xs font-bold text-slate-600">
+              Question {engine.cursor + 1} of {sectionQuestionsList.length} · {answeredCount} answered
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
               <button
-                key={item.id}
                 type="button"
-                onClick={() => goToQuestion(index)}
-                aria-label={`Question ${index + 1}${answered ? ', answered' : ''}${flagged ? ', flagged' : ''}`}
-                className={`grid h-10 w-10 place-items-center rounded-xl border-2 text-sm font-extrabold transition ${
-                  current
-                    ? 'border-indigo-600 bg-indigo-600 text-white ring-2 ring-indigo-200'
-                    : answered
-                      ? 'border-indigo-200 bg-indigo-100 text-indigo-800'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                } ${flagged ? 'outline-2 outline-offset-1 outline-amber-400' : ''}`}
+                onClick={toggleFlag}
+                className={`${btnSecondaryClass} !min-h-[32px] !px-2.5 !py-1 !text-xs ${engine.flags[question.id] === true ? 'border-amber-400 bg-amber-100 text-amber-900' : ''}`}
               >
-                {index + 1}
+                <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+                {engine.flags[question.id] === true ? 'Flagged' : 'Flag'}
               </button>
-            )
-          })}
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-bold text-slate-500">
-            {answeredCount}/{sectionQuestionsList.length} answered
-          </span>
-          <button
-            type="button"
-            onClick={() => setFinishStep(1)}
-            className={`${btnSecondaryClass} min-h-[44px] px-4 py-2 text-sm`}
-          >
-            Finish {sectionConfig.title} Early
-          </button>
-          <button
-            type="button"
-            onClick={() => setCancelStep(1)}
-            className={`${btnSecondaryClass} min-h-[44px] px-4 py-2 text-sm text-rose-700`}
-          >
-            Cancel exam
-          </button>
-        </div>
-      </div>
+              <button
+                type="button"
+                onClick={() => setFinishStep(1)}
+                className={`${btnSecondaryClass} !min-h-[32px] !px-2.5 !py-1 !text-xs`}
+              >
+                Finish early
+              </button>
+              <button
+                type="button"
+                onClick={() => setCancelStep(1)}
+                className={`${btnSecondaryClass} !min-h-[32px] !px-2.5 !py-1 !text-xs text-rose-700`}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
       ) : null}
 
       {isCreativeWriting ? (
@@ -1631,7 +1615,6 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
         }
         onSelect={selectAnswer}
         flagged={engine.flags[question.id] === true}
-        onToggleFlag={toggleFlag}
         writtenMode={sectionConfig.writtenMode === true}
         onWriteAnswer={(value) => submitWrittenAnswer(value)}
         onWrittenChange={(value) => submitWrittenAnswer(value)}

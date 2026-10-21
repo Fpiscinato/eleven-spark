@@ -439,7 +439,7 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
       </header>
 
       <div className="relative flex min-h-0 flex-1 flex-col">
-        <div className="flex flex-col gap-3 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:pr-1">
+        <div className="flex flex-col gap-3 pb-24 md:pb-2 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:pr-1">
           <QuestionView
             key={question.id}
             question={question}
