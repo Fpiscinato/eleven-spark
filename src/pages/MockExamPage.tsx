@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { MathText } from '../components/exam/MathText'
 import { NvrFigureSvg, NvrSvgRenderer } from '../components/exam/NvrSvgRenderer'
 import { QuestionView } from '../components/exam/QuestionView'
+import { ScratchpadOverlay } from '../components/exam/ScratchpadOverlay'
 import {
   AccuracyBar,
   ScreenHeader,
@@ -522,6 +523,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
   const [gradeMode, setGradeMode] = useState<ExamMode | null>(null)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [cancelStep, setCancelStep] = useState<0 | 1 | 2>(0)
+  const [scratchOpen, setScratchOpen] = useState(false)
   const { activeProfileId } = useProfile()
   const { parentMode, requestUnlock } = useParentGate()
   const questionShownAtRef = useRef(0)
@@ -934,6 +936,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
   const goToQuestion = useCallback(
     (index: number) => {
       accrueCurrentQuestion()
+      setScratchOpen(false)
       setEngine((current) => (current ? { ...current, cursor: index } : current))
     },
     [accrueCurrentQuestion],
@@ -1424,16 +1427,16 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
         </div>
       ) : null}
 
-      <div className={`${cardClass} !p-3 flex shrink-0 flex-wrap items-center justify-between gap-2 md:!p-4`}>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-lg font-black text-slate-900">{engine.config.title}</span>
+      <div className={`${cardClass} !p-2.5 flex shrink-0 flex-wrap items-center justify-between gap-2 md:!p-3`}>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-sm font-black text-slate-900">{engine.config.title}</span>
           {engine.config.sections.map((section, index) => {
             const state =
               index < engine.sectionIndex ? 'locked' : index === engine.sectionIndex ? 'active' : 'upcoming'
             return (
               <span
                 key={section.id}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-extrabold ${
+                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-extrabold ${
                   state === 'active'
                     ? 'border-indigo-600 bg-indigo-600 text-white'
                     : state === 'locked'
@@ -1441,22 +1444,39 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
                       : 'border-slate-200 bg-white text-slate-500'
                 }`}
               >
-                {state === 'locked' ? <Lock className="h-3 w-3" aria-hidden="true" /> : null}
+                {state === 'locked' ? <Lock className="h-2.5 w-2.5" aria-hidden="true" /> : null}
                 {section.title}
                 {state === 'active' ? ` · ${formatMinutes(section.timeSeconds)}` : ''}
               </span>
             )
           })}
+          {question ? (
+            <span className="hidden max-w-[10rem] truncate rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-600 sm:inline-block">
+              {question.topic}
+            </span>
+          ) : null}
         </div>
-        <p className={`text-2xl font-black tabular-nums ${timerClass}`} aria-live="polite">
-          {formatClock(remaining)}
-        </p>
+        <div className="flex items-center gap-2">
+          {question ? (
+            <button
+              type="button"
+              onClick={() => setScratchOpen(true)}
+              aria-label="Open the scratchpad"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border-2 border-slate-200 bg-white text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700"
+            >
+              <PencilLine className="h-4 w-4" aria-hidden="true" />
+            </button>
+          ) : null}
+          <p className={`text-xl font-black tabular-nums ${timerClass}`} aria-live="polite">
+            {formatClock(remaining)}
+          </p>
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex flex-col gap-3 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:pr-1">
           {!isCreativeWriting && sectionQuestionsList.length > 0 && question ? (
-          <div className={`${cardClass} flex flex-wrap items-center justify-between gap-3`}>
+          <div className={`${cardClass} !p-2.5 flex flex-wrap items-center justify-between gap-2 md:!p-3`}>
             <div className="flex gap-1.5 overflow-x-auto pb-1" aria-label="Question navigator">
           {sectionQuestionsList.map((item, index) => {
             const answered = engine.answers[item.id] !== null && engine.answers[item.id] !== undefined && engine.answers[item.id] !== ''
@@ -1601,6 +1621,9 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
         question={question}
         passage={passage}
         compact
+        twoColumns
+        hideTopic
+        hideScratchpad
         questionNumber={engine.cursor + 1}
         totalQuestions={sectionQuestionsList.length}
         selectedIndex={
@@ -1624,7 +1647,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
           type="button"
           onClick={() => goToQuestion(Math.max(0, engine.cursor - 1))}
           disabled={engine.cursor === 0}
-          className={btnSecondaryClass}
+          className={`${btnSecondaryClass} !min-h-[36px] !px-3 !py-1.5 !text-sm`}
         >
           Previous
         </button>
@@ -1632,7 +1655,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
           <button
             type="button"
             onClick={() => setFinishStep(1)}
-            className={btnPrimaryClass}
+            className={`${btnPrimaryClass} !min-h-[36px] !px-3 !py-1.5 !text-sm`}
           >
             Finish {sectionConfig.title}
           </button>
@@ -1640,7 +1663,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
           <button
             type="button"
             onClick={() => goToQuestion(engine.cursor + 1)}
-            className={btnPrimaryClass}
+            className={`${btnPrimaryClass} !min-h-[36px] !px-3 !py-1.5 !text-sm`}
           >
             Next
           </button>
@@ -1788,6 +1811,8 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
           </div>
         </div>
       ) : null}
+
+      <ScratchpadOverlay open={scratchOpen} onClose={() => setScratchOpen(false)} resetKey={question?.id ?? 'mock'} />
       </div>
     </div>
   )

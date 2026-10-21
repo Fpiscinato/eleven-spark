@@ -102,6 +102,7 @@ interface OptionsListProps {
   disabled: boolean
   showFeedback: boolean
   compact?: boolean
+  twoColumns?: boolean
 }
 
 function OptionsList({
@@ -111,10 +112,11 @@ function OptionsList({
   disabled,
   showFeedback,
   compact = false,
+  twoColumns = false,
 }: OptionsListProps) {
   const optionFigures = question.svgConfig?.optionFigures
   return (
-    <div className={compact ? 'grid gap-1.5' : 'grid gap-3'}>
+    <div className={`${compact ? 'grid gap-1.5' : 'grid gap-3'} ${twoColumns ? 'sm:grid-cols-2' : ''}`}>
       {question.options.map((option, index) => {
         const letter = OPTION_LETTERS[index]
         const isSelected = selectedIndex === index
@@ -289,6 +291,12 @@ export interface QuestionViewProps {
   onWrittenChange?: ((value: string) => void) | undefined
   /** Compact mode: tighter layout used by the no-scroll practice screen. */
   compact?: boolean
+  /** Render the five options in two columns to save vertical space. */
+  twoColumns?: boolean
+  /** Hide the topic badge (moved to the page header to save a line). */
+  hideTopic?: boolean
+  /** Hide the scratchpad button/overlay (parent renders its own). */
+  hideScratchpad?: boolean
 }
 
 function StrategyPanel({ question }: { question: Question }) {
@@ -345,6 +353,9 @@ export function QuestionView({
   onWriteAnswer,
   onWrittenChange,
   compact = false,
+  twoColumns = false,
+  hideTopic = false,
+  hideScratchpad = false,
 }: QuestionViewProps) {
   const [scratchOpen, setScratchOpen] = useState(false)
   const [passageWidth, setPassageWidth] = useState(480)
@@ -396,13 +407,15 @@ export function QuestionView({
               Question {questionNumber} of {totalQuestions}
             </span>
           ) : null}
-          <span
-            className={`rounded-full border border-slate-200 bg-white font-bold text-slate-600 ${
-              compact ? 'px-2.5 py-0.5 text-xs' : 'px-3 py-1.5 text-sm'
-            }`}
-          >
-            {question.topic}
-          </span>
+          {hideTopic ? null : (
+            <span
+              className={`rounded-full border border-slate-200 bg-white font-bold text-slate-600 ${
+                compact ? 'px-2.5 py-0.5 text-xs' : 'px-3 py-1.5 text-sm'
+              }`}
+            >
+              {question.topic}
+            </span>
+          )}
           {/* In the compact practice screen the stars take precious vertical
               space without teaching anything, so they are dropped. */}
           {compact ? (
@@ -415,17 +428,19 @@ export function QuestionView({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setScratchOpen(true)}
-            aria-label="Open the scratchpad"
-            className={`inline-flex items-center justify-center rounded-xl border-2 border-slate-200 bg-white font-extrabold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700 ${
-              compact ? 'h-9 w-9' : 'min-h-[44px] gap-2 px-4 py-2 text-sm'
-            }`}
-          >
-            <PencilLine className={compact ? 'h-4 w-4' : 'h-5 w-5'} aria-hidden="true" />
-            {compact ? null : 'Scratchpad'}
-          </button>
+          {hideScratchpad ? null : (
+            <button
+              type="button"
+              onClick={() => setScratchOpen(true)}
+              aria-label="Open the scratchpad"
+              className={`inline-flex items-center justify-center rounded-xl border-2 border-slate-200 bg-white font-extrabold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700 ${
+                compact ? 'h-9 w-9' : 'min-h-[44px] gap-2 px-4 py-2 text-sm'
+              }`}
+            >
+              <PencilLine className={compact ? 'h-4 w-4' : 'h-5 w-5'} aria-hidden="true" />
+              {compact ? null : 'Scratchpad'}
+            </button>
+          )}
           {onToggleFlag ? (
             <button
               type="button"
@@ -532,6 +547,7 @@ export function QuestionView({
                   disabled={locked}
                   showFeedback={showFeedback}
                   compact={compact}
+                  twoColumns={twoColumns}
                 />
               )}
               {showStrategy && locked ? (
@@ -590,6 +606,7 @@ export function QuestionView({
               disabled={locked}
               showFeedback={showFeedback}
               compact={compact}
+              twoColumns={twoColumns}
             />
           )}
           {showStrategy && locked ? (
@@ -611,7 +628,7 @@ export function QuestionView({
         </section>
       )}
 
-      <ScratchpadOverlay open={scratchOpen} onClose={() => setScratchOpen(false)} resetKey={question.id} />
+      {hideScratchpad ? null : <ScratchpadOverlay open={scratchOpen} onClose={() => setScratchOpen(false)} resetKey={question.id} />}
     </div>
   )
 }

@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BeaconWritingPanel } from '../components/exam/BeaconWritingPanel'
 import { LearnHowToSolve, QuickExplanation } from '../components/exam/AnswerHelp'
 import { QuestionView } from '../components/exam/QuestionView'
+import { ScratchpadOverlay } from '../components/exam/ScratchpadOverlay'
 import { MathText } from '../components/exam/MathText'
 import {
   AccuracyBar,
@@ -149,6 +150,7 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
   const [helpView, setHelpView] = useState<HelpView>('none')
   const [elapsed, setElapsed] = useState(0)
   const [timerRunning, setTimerRunning] = useState(true)
+  const [scratchOpen, setScratchOpen] = useState(false)
   const shownAtRef = useRef(0)
   const startedAtRef = useRef(0)
   const feedbackRef = useRef<HTMLDivElement>(null)
@@ -377,6 +379,7 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
     setPending(null)
     setPaceMessage(null)
     setHelpView('none')
+    setScratchOpen(false)
     shownAtRef.current = Date.now()
   }, [isLast, finalize])
 
@@ -405,6 +408,20 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
           {subjectMeta.label}
         </span>
         <span
+          className="hidden max-w-[10rem] truncate rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-bold text-slate-600 sm:inline-block"
+          title={question.topic}
+        >
+          {question.topic}
+        </span>
+        <button
+          type="button"
+          onClick={() => setScratchOpen(true)}
+          aria-label="Open the scratchpad"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border-2 border-slate-200 bg-white text-slate-700 transition hover:border-indigo-300 hover:text-indigo-700"
+        >
+          <PencilLine className="h-4 w-4" aria-hidden="true" />
+        </button>
+        <span
           className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-black text-slate-600 tabular-nums"
           role="timer"
           aria-label={`Time used ${formatClock(elapsed)}`}
@@ -428,6 +445,9 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
             question={question}
             passage={passage}
             compact
+            twoColumns
+            hideTopic
+            hideScratchpad
             questionNumber={index + 1}
             totalQuestions={run.questions.length}
             selectedIndex={isConfirmed ? outcome.selectedIndex : pending}
@@ -474,41 +494,39 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
 
       <footer className="sticky bottom-[env(safe-area-inset-bottom)] z-20 -mx-3 shrink-0 border-t-2 border-slate-200 bg-white px-3 py-2.5 md:static md:mx-0 md:rounded-2xl md:border-2 md:border-slate-200 md:shadow-sm">
         {isConfirmed ? (
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setHelpView((view) => (view === 'quick' ? 'none' : 'quick'))}
-                aria-pressed={helpView === 'quick'}
-                className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-2xl border-2 px-2 py-1.5 text-xs font-extrabold transition ${
-                  helpView === 'quick'
-                    ? 'border-amber-500 bg-amber-500 text-slate-950'
-                    : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
-                }`}
-              >
-                <Lightbulb className="h-4 w-4" aria-hidden="true" />
-                💡 Quick Explanation
-              </button>
-              <button
-                type="button"
-                onClick={() => setHelpView((view) => (view === 'tutorial' ? 'none' : 'tutorial'))}
-                aria-pressed={helpView === 'tutorial'}
-                className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-2xl border-2 px-2 py-1.5 text-xs font-extrabold transition ${
-                  helpView === 'tutorial'
-                    ? 'border-indigo-600 bg-indigo-600 text-white'
-                    : 'border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
-                }`}
-              >
-                <Brain className="h-4 w-4" aria-hidden="true" />
-                🧠 Learn How to Solve
-              </button>
-            </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setHelpView((view) => (view === 'quick' ? 'none' : 'quick'))}
+              aria-pressed={helpView === 'quick'}
+              className={`inline-flex min-h-[36px] shrink-0 items-center justify-center gap-1 rounded-xl border-2 px-2 py-1 text-[11px] font-extrabold transition ${
+                helpView === 'quick'
+                  ? 'border-amber-500 bg-amber-500 text-slate-950'
+                  : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
+              }`}
+            >
+              <Lightbulb className="h-3.5 w-3.5" aria-hidden="true" />
+              Quick
+            </button>
+            <button
+              type="button"
+              onClick={() => setHelpView((view) => (view === 'tutorial' ? 'none' : 'tutorial'))}
+              aria-pressed={helpView === 'tutorial'}
+              className={`inline-flex min-h-[36px] shrink-0 items-center justify-center gap-1 rounded-xl border-2 px-2 py-1 text-[11px] font-extrabold transition ${
+                helpView === 'tutorial'
+                  ? 'border-indigo-600 bg-indigo-600 text-white'
+                  : 'border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
+              }`}
+            >
+              <Brain className="h-3.5 w-3.5" aria-hidden="true" />
+              Learn
+            </button>
             <button
               type="button"
               onClick={goNext}
-              className={`${btnPrimaryClass} min-h-[48px] w-full py-2.5 text-base`}
+              className={`${btnPrimaryClass} min-h-[36px] flex-1 py-1.5 text-sm`}
             >
-              {isLast ? 'See my results' : 'Next question'}
+              {isLast ? 'Results' : 'Next'}
             </button>
           </div>
         ) : isWrittenQuestion ? (
@@ -527,6 +545,7 @@ function PracticeRunner({ run, profileId, onFinished }: PracticeRunnerProps) {
           </button>
         )}
       </footer>
+      <ScratchpadOverlay open={scratchOpen} onClose={() => setScratchOpen(false)} resetKey={question.id} />
       </div>
     </div>
   )
