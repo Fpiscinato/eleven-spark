@@ -115,6 +115,7 @@ export function BeaconWritingPanel({ onSubmitted, resetKey }: BeaconWritingPanel
   const [savedAt, setSavedAt] = useState<number | null>(null)
   const [submittedAt, setSubmittedAt] = useState<number | null>(null)
   const [step, setStep] = useState<Step>(1)
+  const [planningStarted, setPlanningStarted] = useState(false)
   const [checked, setChecked] = useState<boolean[]>([])
   const [checkedAt, setCheckedAt] = useState<number[]>([])
   const [planningElapsed, setPlanningElapsed] = useState(0)
@@ -133,7 +134,7 @@ export function BeaconWritingPanel({ onSubmitted, resetKey }: BeaconWritingPanel
   const canSubmit = allChecked && hasWriting && savedAt !== null
 
   const submitted = submittedAt !== null
-  const isRunning = !submitted && (step === 1 || step === 2)
+  const isRunning = !submitted && (step === 2 || (step === 1 && planningStarted))
 
   useEffect(() => {
     if (!isRunning) return
@@ -188,9 +189,10 @@ export function BeaconWritingPanel({ onSubmitted, resetKey }: BeaconWritingPanel
     setCheckedAt([])
     setHistory([])
     setStep(1)
+    setPlanningStarted(false)
   }, [resetKey])
 
-  const planningLeft = Math.max(0, PLANNING_SECONDS - planningElapsed)
+  const planningLeft = planningStarted ? Math.max(0, PLANNING_SECONDS - planningElapsed) : PLANNING_SECONDS
   const writingLeft = Math.max(0, WRITING_SECONDS - writingElapsed)
 
   const handleSave = () => {
@@ -222,6 +224,7 @@ export function BeaconWritingPanel({ onSubmitted, resetKey }: BeaconWritingPanel
     setCheckedAt([])
     setHistory([])
     setStep(1)
+    setPlanningStarted(false)
   }
 
   const handleTextChange = (value: string) => {
@@ -368,15 +371,35 @@ export function BeaconWritingPanel({ onSubmitted, resetKey }: BeaconWritingPanel
               Target length: about {task.targetWords} words. Use the planning time to decide the
               beginning, the middle and the end before you write.
             </p>
+            {!planningStarted ? (
+              <p className="mt-2 text-xs font-extrabold text-amber-700">
+                Press “Start planning” when you are ready — the 5-minute timer only starts then.
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <button type="button" onClick={handleNewTask} className={btnSecondaryClass}>
               <Sparkles className="h-4 w-4" aria-hidden="true" />
               New task
             </button>
-            <button type="button" onClick={() => setStep(2)} className={btnPrimaryClass}>
-              Next: start writing
-            </button>
+            {!planningStarted ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setPlanningStarted(true)
+                  stepStartedAtRef.current = Date.now()
+                  setPlanningElapsed(0)
+                }}
+                className={btnPrimaryClass}
+              >
+                <Timer className="h-4 w-4" aria-hidden="true" />
+                Start planning (5 min)
+              </button>
+            ) : (
+              <button type="button" onClick={() => setStep(2)} className={btnPrimaryClass}>
+                Next: start writing
+              </button>
+            )}
           </div>
         </>
       ) : step === 2 ? (
