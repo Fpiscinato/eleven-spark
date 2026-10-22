@@ -13,12 +13,32 @@ A child-friendly Progressive Web App for Gloucestershire 11+ grammar school prep
 - **Practice Mode**: an "action first" screen (▶️ Start Practice and ⚡ Quick 10 Mix at the top, everything else folded into three collapsible cards), a no-scroll question screen, instant encouraging feedback, two levels of help (💡 Quick Explanation and 🧠 Learn How to Solve) and a Mistake Clinic for anything answered wrongly or too slowly. The Mistake Clinic and the Mistake Bank use the exact same runner as Practice.
 - **Guided creative writing**: a 3-step Beacon flow (Read → Write → Check) with a real interactive checklist.
 - **Parent Mode**: a PIN-protected dashboard (`1126` by default) for profile management, granular progress resets and cloud sync settings.
-- **3-phase roadmap**: Foundation (Oct–Jan), Speed (Feb–Apr) and Stamina (May–Jul), with a daily "20-Minute Spark".
+- **3-phase roadmap**: Phase 1 — Core KS2 Mastery (Oct–Jan), Phase 2 — Beacon Written Precision & Speed (Feb–Apr) and Phase 3 — Full FSCE 3-Paper Stamina (May–early July), with a daily "20-Minute Spark".
 - **Offline-first**: all data lives in IndexedDB (Dexie) and syncs to a private GitHub Gist when configured.
+- **Backup in two layers**: a JSON backup you can download and restore (`BackupRestoreCard`), plus local snapshots kept on the device (`LocalSnapshotsCard`).
+- **Analytics and Guide screens**: a dedicated progress breakdown (`AnalyticsPage`) and an in-app guide (`GuidePage`).
 
 ## Tech stack
 
 React 19 · TypeScript · Vite · Tailwind CSS v4 · Lucide React · Dexie.js (IndexedDB) · KaTeX · Zod · vite-plugin-pwa.
+
+**Live site:** <https://eleven-spark.f-piscinato.workers.dev>
+
+## Project layout
+
+```
+src/
+  App.tsx              routes and the app shell
+  config/version.ts    APP_VERSION, question bank version, release notes
+  pages/               Dashboard, Practice, Mock exam, Progress, Analytics, Guide, Settings
+  screens/             Dashboard and Progress screens
+  components/          AppShell, exam runner, brand/update banner, parent-mode cards
+  db/                  Dexie schema and queries
+  generators/          question generators (Compass and friends)
+  services/            Gist sync, local snapshots, PWA registration, data reset
+  utils/               roadmap calculator, scoring and other pure helpers
+  data/                the question bank
+```
 
 ## Development
 
@@ -38,14 +58,14 @@ npm run icons         # regenerate the PWA icons for the new version
 The version is `major.minor.patch` and every part is a single base-10 digit (0-9). `npm run version:bump` always follows the decimal rule, digit by digit:
 
 ```
-1.7.4 -> 1.7.5 -> ... -> 1.7.9 -> 1.8.0 -> ... -> 1.9.9 -> 2.0.0
+1.7.5 -> 1.7.6 -> ... -> 1.7.9 -> 1.8.0 -> ... -> 1.9.9 -> 2.0.0
 ```
 
 After bumping, run `npm run icons` so the PWA icons are regenerated into `public/app-icons/vX.Y.Z/`. The version itself is only ever shown in **Settings**.
 
 ## Deployment
 
-Hosted as a static PWA on Cloudflare Workers (`wrangler.jsonc`, SPA fallback via `assets.not_found_handling`).
+Hosted as a static PWA on Cloudflare Workers (`wrangler.jsonc`, SPA fallback via `assets.not_found_handling`). The live site is <https://eleven-spark.f-piscinato.workers.dev>.
 
 ### Automatic (recommended)
 
@@ -79,6 +99,6 @@ Requires an authenticated Wrangler session (`npx wrangler login`) with access to
 
 ## How to tell which version is running
 
-- **Settings → App version**: the only place that shows the version (`v1.7.5`), the question bank version (`Bank v6`) and what is new in that version.
+- **Settings → App version**: the only place that shows the version (`v1.7.6`), the question bank version (`Bank v6`) and what is new in that version.
 - **A banner appears at the top** as soon as a new version has been downloaded and is ready: *“A new version of ElevenSpark is ready… Tap to update.”* Tap **Update now** and the app reloads with the new code.
 - The **question bank** re-seeds itself whenever `QUESTION_BANK_VERSION` changes, so a new version also means new questions.
