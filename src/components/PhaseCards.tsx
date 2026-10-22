@@ -7,6 +7,12 @@ export function PhaseCards({ roadmap }: { roadmap: RoadmapSnapshot }) {
       <h2 id="phases-heading" className="mb-3 text-lg font-black text-slate-900">
         Your 3-phase roadmap
       </h2>
+      <p className="mb-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-500">
+        These phases only count the Gloucestershire FSCE subjects (English, Maths and Compass).
+        {roadmap.optionalAnswered > 0
+          ? ` Your ${roadmap.optionalAnswered} optional NVR/VR question${roadmap.optionalAnswered === 1 ? '' : 's'} are kept separate, so they never change this progress.`
+          : ' Optional NVR/VR bonus practice never changes this progress.'}
+      </p>
       <div className="grid gap-3 lg:grid-cols-3">
         {roadmap.phases.map((phase) => {
           const current = phase.id === roadmap.currentPhaseId

@@ -9,11 +9,11 @@ import {
   PencilLine,
   Printer,
   Trophy,
-  X,
   Star,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MathText } from '../components/exam/MathText'
+import { ConfirmEndSessionModal } from '../components/exam/ConfirmEndSessionModal'
 import { NvrFigureSvg, NvrSvgRenderer } from '../components/exam/NvrSvgRenderer'
 import { QuestionView } from '../components/exam/QuestionView'
 import { ScratchpadOverlay } from '../components/exam/ScratchpadOverlay'
@@ -30,6 +30,9 @@ import type { Attempt, Passage, Question, SectionBreakdownEntry } from '../db/sc
 import {
   EXAM_CONFIGS,
   EXAM_MODES,
+  EXTRA_PRACTICE_MODES,
+  FSCE_PAPER_MODES,
+  OPTIONAL_BONUS_LABEL,
   pickBalancedQuestions,
   shuffleQuestions,
   type ExamConfig,
@@ -76,6 +79,74 @@ function OmrInstructionsCard({ className = '' }: { className?: string }) {
       <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" aria-hidden="true" />
       <span>{OMR_INSTRUCTIONS}</span>
     </p>
+  )
+}
+
+/**
+ * One paper card in the mock exam list. The three official Gloucestershire
+ * papers use this card; the extra drills use it too, but muted and clearly
+ * separated so they can never be mistaken for an exam paper.
+ */
+function PaperCard({
+  mode,
+  counts,
+  onStart,
+  muted = false,
+}: {
+  mode: ExamMode
+  counts: number[] | null
+  onStart: () => void
+  muted?: boolean
+}) {
+  const config = EXAM_CONFIGS[mode]
+  const total = counts ? counts.reduce((sum, n) => sum + n, 0) : null
+  return (
+    <div
+      className={`${cardClass} flex flex-col gap-4 ${muted ? 'border-2 border-dashed border-slate-300 bg-slate-50' : ''}`}
+      data-testid={`paper-card-${mode}`}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className={`grid h-12 w-12 place-items-center rounded-2xl ${
+            muted ? 'bg-slate-200 text-slate-600' : 'bg-indigo-100 text-indigo-700'
+          }`}
+        >
+          <ClipboardList className="h-6 w-6" aria-hidden="true" />
+        </div>
+        <div>
+          <p className="text-lg font-black text-slate-900">{config.title}</p>
+          <p className="text-sm font-bold text-slate-500">{config.subtitle}</p>
+        </div>
+      </div>
+      {muted ? (
+        <p className="w-fit rounded-full bg-slate-200 px-3 py-1 text-xs font-extrabold text-slate-700">
+          Extra practice — not an official FSCE paper
+        </p>
+      ) : null}
+      <p className="flex-1 text-sm font-semibold leading-relaxed text-slate-600">{config.blurb}</p>
+      <ul className="flex flex-wrap gap-2">
+        {config.sections.map((section, sectionIndex) => (
+          <li
+            key={section.id}
+            className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-extrabold text-slate-600"
+          >
+            {section.title}: {section.subjectLabel} · {formatMinutes(section.timeSeconds)}
+            {counts ? ` · ${counts[sectionIndex] ?? 0} item${(counts[sectionIndex] ?? 0) === 1 ? '' : 's'}` : ''}
+          </li>
+        ))}
+      </ul>
+      <p className="text-sm font-bold text-slate-500">
+        {total === null ? 'Counting questions...' : `${total} items in this paper`}
+      </p>
+      <button
+        type="button"
+        onClick={onStart}
+        disabled={total === 0 || total === null}
+        className={btnPrimaryClass}
+      >
+        Start {config.shortTitle} Paper
+      </button>
+    </div>
   )
 }
 
@@ -533,7 +604,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
   const [omrSheetMode, setOmrSheetMode] = useState<ExamMode | null>(null)
   const [gradeMode, setGradeMode] = useState<ExamMode | null>(null)
   const [reviewOpen, setReviewOpen] = useState(false)
-  const [cancelStep, setCancelStep] = useState<0 | 1 | 2>(0)
+  const [cancelOpen, setCancelOpen] = useState(false)
   const [scratchOpen, setScratchOpen] = useState(false)
   const [jumpOpen, setJumpOpen] = useState(false)
   const { activeProfileId } = useProfile()
@@ -1089,55 +1160,50 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
           <OmrInstructionsCard className="mt-4" />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          {EXAM_MODES.map((mode) => {
-            const config = EXAM_CONFIGS[mode]
-            const counts = introCounts ? introCounts[mode] : null
-            const total = counts ? counts.reduce((sum, n) => sum + n, 0) : null
-            return (
-              <div key={mode} className={`${cardClass} flex flex-col gap-4`}>
-                <div className="flex items-center gap-3">
-                  <div className="grid h-12 w-12 place-items-center rounded-2xl bg-indigo-100 text-indigo-700">
-                    <ClipboardList className="h-6 w-6" aria-hidden="true" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-black text-slate-900">{config.title}</p>
-                    <p className="text-sm font-bold text-slate-500">{config.subtitle}</p>
-                  </div>
-                </div>
-                <p className="flex-1 text-sm font-semibold leading-relaxed text-slate-600">{config.blurb}</p>
-                <ul className="flex flex-wrap gap-2">
-                  {config.sections.map((section, sectionIndex) => (
-                    <li
-                      key={section.id}
-                      className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-extrabold text-slate-600"
-                    >
-                      {section.title}: {section.subjectLabel} · {formatMinutes(section.timeSeconds)}
-                      {counts ? ` · ${counts[sectionIndex] ?? 0} item${(counts[sectionIndex] ?? 0) === 1 ? '' : 's'}` : ''}
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-sm font-bold text-slate-500">
-                  {total === null ? 'Counting questions...' : `${total} items in this paper`}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void startPaper(mode)}
-                  disabled={total === 0 || total === null}
-                  className={btnPrimaryClass}
-                >
-                  Start {config.title.split(':')[0]}
-                </button>
-              </div>
-            )
-          })}
-        </div>
+        <section aria-labelledby="fsce-papers-heading">
+          <h2 id="fsce-papers-heading" className="mb-3 text-lg font-black text-slate-900">
+            The three Gloucestershire FSCE papers
+          </h2>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {FSCE_PAPER_MODES.map((mode) => (
+              <PaperCard
+                key={mode}
+                mode={mode}
+                counts={introCounts ? introCounts[mode] : null}
+                onStart={() => void startPaper(mode)}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section aria-labelledby="extra-practice-heading">
+          <h2 id="extra-practice-heading" className="mb-1 text-lg font-black text-slate-900">
+            Extra practice
+          </h2>
+          <p className="mb-3 text-sm font-bold text-slate-500">
+            Short drills for busy weekdays. Useful, but not one of the three exam papers.
+          </p>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {EXTRA_PRACTICE_MODES.map((mode) => (
+              <PaperCard
+                key={mode}
+                mode={mode}
+                counts={introCounts ? introCounts[mode] : null}
+                onStart={() => void startPaper(mode)}
+                muted
+              />
+            ))}
+          </div>
+        </section>
 
         <div className={`${cardClass} border-2 border-slate-200 bg-slate-50`}>
           <details>
-            <summary className="cursor-pointer text-sm font-black text-slate-700">Optional Classic Logic Mock (NVR & VR - Not required for Glos)</summary>
+            <summary className="cursor-pointer text-sm font-black text-slate-700">
+              🧠 {OPTIONAL_BONUS_LABEL} — NVR & VR Logic Gym
+            </summary>
             <p className="mt-2 text-sm font-semibold text-slate-600">
-              Extra practice for logic skills only. Not part of Gloucestershire FSCE requirements.
+              Extra practice for logic skills only. Not part of Gloucestershire FSCE requirements, so
+              it never counts towards your exam progress.
             </p>
           </details>
         </div>
@@ -1520,7 +1586,7 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
               </button>
               <button
                 type="button"
-                onClick={() => setCancelStep(1)}
+                onClick={() => setCancelOpen(true)}
                 className={`${btnSecondaryClass} !min-h-[36px] !px-2.5 !py-1 !text-xs text-rose-700`}
               >
                 Cancel
@@ -1711,70 +1777,18 @@ export function MockExamPage({ onNavigate }: MockExamPageProps) {
       </div>
       ) : null}
 
-      {cancelStep > 0 ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl" role="alertdialog" aria-modal="true">
-            <div className="mb-3 flex items-center gap-3">
-              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-rose-100 text-rose-700">
-                <X className="h-6 w-6" aria-hidden="true" />
-              </div>
-              <h2 className="text-lg font-black text-slate-900">
-                {cancelStep === 1 ? 'Cancel this exam?' : 'Are you sure? Everything is lost'}
-              </h2>
-            </div>
-            {cancelStep === 1 ? (
-              <p className="mb-5 text-sm font-semibold leading-relaxed text-slate-600">
-                The paper will be marked as abandoned and you will go back to the mock list. You can start
-                a new paper whenever you are ready.
-              </p>
-            ) : (
-              <p className="mb-5 text-sm font-semibold leading-relaxed text-slate-600">
-                Your answers of this paper will not be saved. This cannot be undone.
-              </p>
-            )}
-            <div className="flex flex-col gap-2 sm:flex-row">
-              {cancelStep === 1 ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setCancelStep(2)}
-                    className={`${btnPrimaryClass} flex-1`}
-                  >
-                    Yes, cancel the exam
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCancelStep(0)}
-                    className={`${btnSecondaryClass} flex-1`}
-                  >
-                    Keep working
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCancelStep(0)
-                      goIntro()
-                    }}
-                    className={`${btnPrimaryClass} flex-1`}
-                  >
-                    Cancel the exam now
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCancelStep(1)}
-                    className={`${btnSecondaryClass} flex-1`}
-                  >
-                    Go back
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ConfirmEndSessionModal
+        open={cancelOpen}
+        title="End this mock paper?"
+        message="This paper will be saved as abandoned and you will go back to the mock list. You can start a new paper whenever you are ready."
+        keepLabel="Keep Working"
+        endLabel="End Paper"
+        onKeepGoing={() => setCancelOpen(false)}
+        onEnd={() => {
+          setCancelOpen(false)
+          goIntro()
+        }}
+      />
 
       {finishStep > 0 ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/50 p-4">

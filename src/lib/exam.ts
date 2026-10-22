@@ -29,6 +29,22 @@ export interface ExamConfig {
 
 export const EXAM_MODES: readonly ExamMode[] = ['mock_paper_1', 'mock_paper_2', 'mock_paper_3', 'mini_mock']
 
+/**
+ * The three official Gloucestershire FSCE papers. These are the ones the
+ * child will actually sit in July, so they are the ones shown in the main
+ * "highlight" row of the mock exam screen.
+ */
+export const FSCE_PAPER_MODES: readonly ExamMode[] = ['mock_paper_1', 'mock_paper_2', 'mock_paper_3']
+
+/**
+ * Extra practice that is NOT part of the Gloucestershire FSCE exam. It is
+ * labelled as a bonus so it can never be mistaken for a real paper.
+ */
+export const EXTRA_PRACTICE_MODES: readonly ExamMode[] = ['mini_mock']
+
+/** The label used everywhere an optional (NVR/VR) activity is offered. */
+export const OPTIONAL_BONUS_LABEL = 'Optional Bonus (Not in Glos FSCE Exam)'
+
 const MINUTE = 60
 
 export const EXAM_CONFIGS: Record<ExamMode, ExamConfig> = {

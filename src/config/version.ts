@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.7.4'
+export const APP_VERSION = '1.7.5'
 export const QUESTION_BANK_VERSION = 6
 export const BUILD_TARGET = 'Gloucestershire FSCE (G7) Edition'
 export const EDITION_LABEL = 'Glos FSCE Edition'
@@ -11,9 +11,10 @@ export const LEGAL_DISCLAIMER =
  * app really updated. Keep it short and written for a 9-year-old.
  */
 export const RELEASE_NOTES: readonly string[] = [
-  'Every screen was checked on a phone and a laptop: no cut-off text, no buttons over the questions.',
-  'The buttons at the bottom never cover the text any more — the question scrolls above them.',
-  'Your topics on a phone show the topic name in full, with the subject underneath.',
-  'Reading passages on a phone are bigger and easier to read.',
-  'The app version now only appears in Settings.',
+  'The Practice screen is now "action first": Start Practice and Quick 10 Mix sit at the top, and everything else folds away into three neat cards.',
+  'The Mistake Clinic and the Mistake Bank now look exactly like Practice — same screen size, same two columns on a laptop, same buttons on a phone.',
+  'Stopping a session now asks once, with two clear buttons, so a tap can never throw your work away by accident.',
+  'The three Gloucestershire papers (Adventure, Beacon, Compass) stand apart from the extra mini-mock drill.',
+  'Optional NVR and VR are labelled as a bonus and never move your FSCE phase progress.',
+  'Every question was checked in light and dark mode: no empty stems, no invisible text.',
 ]

@@ -36,6 +36,14 @@ function checkIntegrity(question: Question, issues: IntegrityIssue[], notes: Not
   if (question.correctIndex < 0 || question.correctIndex > 4) {
     issues.push({ id: question.id, reason: `correctIndex ${question.correctIndex} out of range 0-4` })
   }
+  // A question the child can read must never be blank: an empty stem or an
+  // empty explanation looks like a broken app, not like a question.
+  if (question.stem.trim().length === 0) {
+    issues.push({ id: question.id, reason: 'stem is empty' })
+  }
+  if (question.explanation.trim().length === 0) {
+    issues.push({ id: question.id, reason: 'explanation is empty' })
+  }
 
   // KaTeX only renders when the "$" delimiters are balanced, otherwise the
   // child sees the raw markup instead of a formula.

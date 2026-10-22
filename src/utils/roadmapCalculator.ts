@@ -1,4 +1,5 @@
 import type { Attempt, Session, Subject } from '../db/schemas'
+import { isOptionalSubject } from '../db/schemas'
 import { startOfToday } from '../lib/format'
 
 export type RoadmapPhaseId = 'foundation' | 'speed' | 'stamina'
@@ -32,6 +33,8 @@ export interface RoadmapSnapshot {
   papersDone: number
   clinicQuestionsDone: number
   onTargetPacePercent: number
+  /** Questions answered in the optional NVR/VR subjects (never counted in the phases). */
+  optionalAnswered: number
 }
 
 export interface RoadmapInput {
@@ -79,35 +82,42 @@ export function computeRoadmap(input: RoadmapInput): RoadmapSnapshot {
   const completedMiniMocks = sessions.filter(
     (session) => session.status === 'completed' && session.mode === 'mini_mock',
   )
-  const totalAnswered = attempts.length
-  const correct = attempts.filter((attempt) => attempt.isCorrect).length
+  // NVR and VR are an optional bonus and are NOT part of the Gloucestershire
+  // FSCE exam. They must never raise OR lower the progress of the three
+  // phases, so every phase metric below is calculated on the core subjects
+  // only (English, Maths and Compass).
+  const coreAttempts = attempts.filter((attempt) => !isOptionalSubject(attempt.subject))
+  const optionalAttempts = attempts.filter((attempt) => isOptionalSubject(attempt.subject))
+
+  const totalAnswered = coreAttempts.length
+  const correct = coreAttempts.filter((attempt) => attempt.isCorrect).length
   const accuracy = totalAnswered === 0 ? 0 : Math.round((correct / totalAnswered) * 100)
 
   // Only count coverage of english, maths, compass (required subjects) - exclude nvr, vr
   const requiredSubjects = new Set<Subject>(['english', 'maths', 'compass'])
   const subjectsTouched = new Set(
-    attempts.filter((attempt) => requiredSubjects.has(attempt.subject)).map((attempt) => attempt.subject),
+    coreAttempts.filter((attempt) => requiredSubjects.has(attempt.subject)).map((attempt) => attempt.subject),
   )
   const subjectsCovered = ['english', 'maths', 'compass'].filter((subject) => subjectsTouched.has(subject as Subject)).length
 
-  const onTarget = attempts.filter((attempt) => {
+  const onTarget = coreAttempts.filter((attempt) => {
     const target = questionTimeTargets.get(attempt.questionId)
     return target !== undefined && attempt.timeSpentSeconds <= target
   }).length
   const onTargetPacePercent = totalAnswered === 0 ? 0 : Math.round((onTarget / totalAnswered) * 100)
 
-  const clinicAttempts = attempts.filter((attempt) => {
+  const clinicAttempts = coreAttempts.filter((attempt) => {
     const session = sessions.find((candidate) => candidate.id === attempt.sessionId)
     return session?.mode === 'mistake_clinic'
   })
   const openMistakes = new Set(
-    attempts
+    coreAttempts
       .slice()
       .sort((a, b) => a.timestamp - b.timestamp)
       .filter((attempt) => !attempt.isCorrect)
       .map((attempt) => attempt.questionId),
   )
-  for (const attempt of attempts) {
+  for (const attempt of coreAttempts) {
     if (attempt.isCorrect) openMistakes.delete(attempt.questionId)
   }
 
@@ -245,6 +255,7 @@ export function computeRoadmap(input: RoadmapInput): RoadmapSnapshot {
     papersDone: completedMocks.length,
     clinicQuestionsDone: clinicAttempts.length,
     onTargetPacePercent,
+    optionalAnswered: optionalAttempts.length,
   }
 }
 

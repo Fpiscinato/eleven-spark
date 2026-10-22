@@ -10,7 +10,7 @@ A child-friendly Progressive Web App for Gloucestershire 11+ grammar school prep
   - **Beacon Paper** (~45 min): Section A (English & Maths written answers) → Section B (Creative Writing Task with a live rubric).
   - **Compass Paper** (~40 min): Section A across 11 KS2 disciplines.
   - **Mini-Mock** (20 min): 12 + 12 mixed core questions.
-- **Practice Mode**: a no-scroll screen, instant encouraging feedback, two levels of help (💡 Quick Explanation and 🧠 Learn How to Solve) and a Mistake Clinic for anything answered wrongly or too slowly.
+- **Practice Mode**: an "action first" screen (▶️ Start Practice and ⚡ Quick 10 Mix at the top, everything else folded into three collapsible cards), a no-scroll question screen, instant encouraging feedback, two levels of help (💡 Quick Explanation and 🧠 Learn How to Solve) and a Mistake Clinic for anything answered wrongly or too slowly. The Mistake Clinic and the Mistake Bank use the exact same runner as Practice.
 - **Guided creative writing**: a 3-step Beacon flow (Read → Write → Check) with a real interactive checklist.
 - **Parent Mode**: a PIN-protected dashboard (`1126` by default) for profile management, granular progress resets and cloud sync settings.
 - **3-phase roadmap**: Foundation (Oct–Jan), Speed (Feb–Apr) and Stamina (May–Jul), with a daily "20-Minute Spark".
@@ -24,12 +24,24 @@ React 19 · TypeScript · Vite · Tailwind CSS v4 · Lucide React · Dexie.js (I
 
 ```bash
 npm install
-npm run dev      # start the dev server
-npm run build    # type-check (tsc -b) and build for production
-npm run lint     # oxlint
-npm run preview  # preview the production build
-npm run audit    # child-safety + maths + content audits
+npm run dev           # start the dev server
+npm run build         # type-check (tsc -b) and build for production
+npm run lint          # oxlint
+npm run preview       # preview the production build
+npm run audit         # safety + maths + content + FSCE model + visibility audits
+npm run version:bump  # bump the app version (base-10, digit by digit)
+npm run icons         # regenerate the PWA icons for the new version
 ```
+
+### Version numbering
+
+The version is `major.minor.patch` and every part is a single base-10 digit (0-9). `npm run version:bump` always follows the decimal rule, digit by digit:
+
+```
+1.7.4 -> 1.7.5 -> ... -> 1.7.9 -> 1.8.0 -> ... -> 1.9.9 -> 2.0.0
+```
+
+After bumping, run `npm run icons` so the PWA icons are regenerated into `public/app-icons/vX.Y.Z/`. The version itself is only ever shown in **Settings**.
 
 ## Deployment
 
@@ -57,6 +69,6 @@ Requires an authenticated Wrangler session (`npx wrangler login`) with access to
 
 ## How to tell which version is running
 
-- **Settings → App version**: the only place that shows the version (`v1.7.4`), the question bank version (`Bank v6`) and what is new in that version.
+- **Settings → App version**: the only place that shows the version (`v1.7.5`), the question bank version (`Bank v6`) and what is new in that version.
 - **A banner appears at the top** as soon as a new version has been downloaded and is ready: *“A new version of ElevenSpark is ready… Tap to update.”* Tap **Update now** and the app reloads with the new code.
 - The **question bank** re-seeds itself whenever `QUESTION_BANK_VERSION` changes, so a new version also means new questions.

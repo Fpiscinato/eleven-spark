@@ -198,12 +198,29 @@ export function AppShell({ screen, onNavigate, children }: AppShellProps) {
                 type="button"
                 onClick={() => onNavigate(item.screen)}
                 aria-current={active ? 'page' : undefined}
-                className={`flex min-h-[64px] flex-col items-center justify-center gap-1 px-0.5 text-[10px] font-extrabold transition ${
-                  active ? 'text-indigo-600' : 'text-slate-500'
+                aria-label={active ? `${item.label}, current page` : item.label}
+                className={`relative flex min-h-[68px] flex-col items-center justify-center gap-1 px-0.5 text-[10px] transition ${
+                  active ? 'text-indigo-700' : 'text-slate-500'
                 }`}
               >
-                <Icon className="h-5 w-5" aria-hidden="true" />
-                {item.label}
+                {/* The active tab is unmistakable: a coloured bar on the top
+                    edge, a filled icon tile and a bold label. */}
+                {active ? (
+                  <span
+                    className="absolute inset-x-2 top-0 h-1 rounded-full bg-indigo-600"
+                    aria-hidden="true"
+                  />
+                ) : null}
+                <span
+                  className={`grid h-8 w-8 place-items-center rounded-xl transition ${
+                    active
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-500'
+                  }`}
+                >
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <span className={active ? 'font-black' : 'font-extrabold'}>{item.label}</span>
               </button>
             )
           })}

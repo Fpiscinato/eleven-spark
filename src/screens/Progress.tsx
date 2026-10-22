@@ -7,7 +7,11 @@ import {
   Trophy,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { QuizRunner, type QuizResult } from '../components/QuizRunner'
+import {
+  PracticeRunner,
+  type PracticeRunState,
+  type SessionSummary,
+} from '../components/exam/PracticeRunner'
 import {
   AccuracyBar,
   DifficultyStars,
@@ -49,9 +53,9 @@ interface ClinicRun {
   passagesById: Map<string, Passage>
 }
 
-function praiseForResult(result: QuizResult): string {
-  if (result.total === 0) return 'No answers this time — that is okay, try again whenever you like.'
-  const percent = Math.round((result.correct / result.total) * 100)
+function praiseForResult(result: SessionSummary): string {
+  if (result.answered === 0) return 'No answers this time — that is okay, try again whenever you like.'
+  const percent = Math.round((result.correct / result.answered) * 100)
   if (percent >= 80) return 'Amazing! Those tricky questions are not tricky for you any more.'
   if (percent >= 60) return 'Nice work! Every retry makes these even easier.'
   return 'Good practise — these questions get easier each time you see them.'
@@ -69,7 +73,7 @@ export function Progress({ onNavigate }: ProgressProps) {
   const [sessions, setSessions] = useState<Session[]>([])
   const [mistakes, setMistakes] = useState<MistakeEntry[]>([])
   const [clinic, setClinic] = useState<ClinicRun | null>(null)
-  const [clinicResult, setClinicResult] = useState<QuizResult | null>(null)
+  const [clinicResult, setClinicResult] = useState<SessionSummary | null>(null)
 
   const load = useCallback(async () => {
     const [attemptRows, sessionRows, mistakeRows] = await Promise.all([
@@ -115,12 +119,12 @@ export function Progress({ onNavigate }: ProgressProps) {
           <div className={`${cardClass} flex flex-col items-center gap-2`}>
             <Trophy className="h-12 w-12 text-amber-500" aria-hidden="true" />
             <p className="text-5xl font-black text-slate-900">
-              {clinicResult.total === 0
+              {clinicResult.answered === 0
                 ? '—'
-                : `${Math.round((clinicResult.correct / clinicResult.total) * 100)}%`}
+                : `${Math.round((clinicResult.correct / clinicResult.answered) * 100)}%`}
             </p>
             <p className="text-base font-bold text-slate-600">
-              {clinicResult.correct} correct out of {clinicResult.total}
+              {clinicResult.correct} correct out of {clinicResult.answered}
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -144,12 +148,18 @@ export function Progress({ onNavigate }: ProgressProps) {
       )
     }
     return (
-      <QuizRunner
-        sessionId={clinic.sessionId}
+      <PracticeRunner
+        key={clinic.sessionId}
+        run={
+          {
+            sessionId: clinic.sessionId,
+            mode: 'mistake_clinic',
+            questions: clinic.questions,
+            passagesById: clinic.passagesById,
+            writtenMode: false,
+          } satisfies PracticeRunState
+        }
         profileId={activeProfileId}
-        mode="mistake_clinic"
-        questions={clinic.questions}
-        passagesById={clinic.passagesById}
         onFinished={(result) => {
           setClinicResult(result)
           scheduleSync()
