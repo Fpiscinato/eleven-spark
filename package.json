@@ -20,7 +20,8 @@
     "audit:content": "tsx scripts/audit-content.ts 3",
     "audit:fsce": "tsx scripts/audit-fsce.ts",
     "audit:visibility": "tsx scripts/audit-visibility.ts",
-    "audit": "npm run audit:safety && npm run audit:maths && npm run audit:content && npm run audit:fsce && npm run audit:visibility"
+    "audit": "npm run audit:safety && npm run audit:maths && npm run audit:content && npm run audit:fsce && npm run audit:visibility",
+    "ci": "npm run audit && npm run build"
   },
   "dependencies": {
     "dexie": "^4.4.6",

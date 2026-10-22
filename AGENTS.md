@@ -2,7 +2,7 @@
 
 ## Architecture & Deployment Context
 - Target User: 9-year-old student (Year 5 UK) preparing for the Gloucestershire Grammar Schools Entrance Test (Pate's, Stroud High, Ribston Hall, Denmark Road, Crypt).
-- Hosting & CI/CD: GitHub repository deployed as a static PWA on Cloudflare Pages / Workers (`wrangler.toml` compatible, SPA routing fallback).
+- Hosting & CI/CD: GitHub repository deployed as a static PWA on Cloudflare Pages / Workers (`wrangler.toml` compatible, SPA routing fallback). The deployment is done by **Cloudflare Workers Builds** (the repository is connected to the Cloudflare account) with build command `npm run ci` and deploy command `npx wrangler deploy`. There is **no GitHub Actions workflow** — the old one always failed for lack of secrets and only produced failure emails.
 - Tech Stack: React 18+, TypeScript, Vite, Tailwind CSS, Lucide React, Dexie.js (IndexedDB), KaTeX (math formulas), Zod (schema validation), Vite PWA plugin.
 - All user-facing copy is in **English** (the child is preparing for an English-language exam). Portuguese text is a bug, not a translation request.
 

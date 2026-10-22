@@ -49,14 +49,24 @@ Hosted as a static PWA on Cloudflare Workers (`wrangler.jsonc`, SPA fallback via
 
 ### Automatic (recommended)
 
-Every push to `main` runs `.github/workflows/deploy.yml`, which audits, builds and publishes to the `eleven-spark` Worker. For it to work, add these two secrets in **GitHub → Settings → Secrets and variables → Actions**:
+Every push to `main` is published by **Cloudflare Workers Builds** (the repository is connected
+to the Cloudflare account, same as the other projects). In **Cloudflare → Workers & Pages →
+eleven-spark → Settings → Builds**, the build configuration must be:
 
-| Secret | Value |
+| Setting | Value |
 | --- | --- |
-| `CLOUDFLARE_API_TOKEN` | A Cloudflare API token with *Workers Scripts: Edit* and *Account Settings: Read* for the account. |
-| `CLOUDFLARE_ACCOUNT_ID` | The Cloudflare account ID (Settings → Account → Account ID). |
+| Build command | `npm run ci` |
+| Deploy command | `npx wrangler deploy` |
+| Root directory | `/` |
+| Node version | `22` |
 
-The run is visible in the **Actions** tab of the repository, and the workflow summary confirms the commit that went live.
+`npm run ci` runs the five audits **before** the build, so a broken question bank is never
+published. The build history is visible in the Cloudflare dashboard.
+
+> There is **no GitHub Actions workflow** in this repository. The old
+> `.github/workflows/deploy.yml` was removed: it needed `CLOUDFLARE_API_TOKEN` and
+> `CLOUDFLARE_ACCOUNT_ID` secrets that were never configured, so every push produced a red
+> failed run and a failure email. Cloudflare Builds does the same job with no secrets.
 
 ### Manual
 
