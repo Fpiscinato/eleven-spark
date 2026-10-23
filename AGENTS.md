@@ -2,7 +2,7 @@
 
 ## Architecture & Deployment Context
 - Target User: 9-year-old student (Year 5 UK) preparing for the Gloucestershire Grammar Schools Entrance Test (Pate's, Stroud High, Ribston Hall, Denmark Road, Crypt).
-- Hosting & CI/CD: GitHub repository deployed as a static PWA on Cloudflare Pages / Workers (`wrangler.toml` compatible, SPA routing fallback). The deployment is done by **Cloudflare Workers Builds** (the repository is connected to the Cloudflare account) with build command `npm run ci` and deploy command `npx wrangler deploy`. There is **no GitHub Actions workflow** — the old one always failed for lack of secrets and only produced failure emails.
+- Hosting & CI/CD: GitHub repository deployed as a static PWA on Cloudflare Pages / Workers (`wrangler.jsonc`, SPA routing fallback). The deployment is done by **Cloudflare Workers Builds** (the repository is connected to the Cloudflare account) with build command `npm run ci` and deploy command `npx wrangler deploy`. There is **no GitHub Actions workflow** — the old one always failed for lack of secrets and only produced failure emails.
 - Tech Stack: React 18+, TypeScript, Vite, Tailwind CSS, Lucide React, Dexie.js (IndexedDB), KaTeX (math formulas), Zod (schema validation), Vite PWA plugin.
 - All user-facing copy is in **English** (the child is preparing for an English-language exam). Portuguese text is a bug, not a translation request.
 
@@ -39,6 +39,12 @@
 - Never leave `TODO` placeholders or incomplete functions.
 - UI must be child-friendly, high-contrast, tablet touch-friendly, with encouraging feedback in Practice Mode and realistic exam discipline in Mock Mode.
 - Maths must be infallible: a question may never have two mathematically correct options, and a correct answer must never be shown with floating point noise (`0.8099999999999999`).
+
+## Security & Secrets (non-negotiable)
+- Never commit `.env`, `.env.*`, `opencode.json`, `.dev.vars`, `*.key`, `*.pem` or any token. The `.gitignore` blocks them; never use `git add -f` on those files.
+- Cloudflare credentials (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) live only in GitHub Actions secrets or the Cloudflare dashboard — never in source, `wrangler.jsonc` or docs. Deployment is done by Cloudflare Workers Builds; do not recreate a GitHub Actions workflow.
+- The GitHub token for Gist sync is entered by the user at runtime and stored only in the browser's `localStorage`; never hardcode it, log it, or paste it into a prompt/commit.
+- Before every push: check `git status --short` and `git diff --cached` for secrets. If a secret leaks, revoke it first (Cloudflare/GitHub), then rewrite history — deleting the commit alone is not enough.
 
 ## Local Checks
 - `npm run build` (runs `tsc -b` + `vite build`) - the only reliable type check (`tsc --noEmit` on the solution tsconfig is a no-op).
